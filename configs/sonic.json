@@ -1,0 +1,24 @@
+{
+  "game": {
+    "name": "Sonic the Hedgehog",
+    "adapter": "gym_retro",
+    "rom_name": "SonicTheHedgehog-Genesis",
+    "speed": 1.0,
+    "observe_every_n_frames": 15
+  },
+  "agent": {
+    "provider": "openai",
+    "model": "gpt-4o",
+    "temperature": 0.8,
+    "strategy": "aggressive",
+    "max_history": 40
+  },
+  "commentary": {
+    "personality": "energetic",
+    "tts_enabled": false
+  },
+  "streaming": {
+    "overlay_enabled": true,
+    "overlay_port": 8765
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "game": {
+    "name": "Pokémon Red",
+    "adapter": "pyboy",
+    "rom_path": "./roms/pokemon_red.gb",
+    "speed": 1.0,
+    "observe_every_n_frames": 30
+  },
+  "agent": {
+    "model": "gpt-4o",
+    "provider": "openai",
+    "temperature": 0.7,
+    "strategy": "balanced",
+    "max_history": 50
+  },
+  "commentary": {
+    "personality": "energetic",
+    "tts_enabled": false,
+    "tts_voice": "en-US-1"
+  },
+  "streaming": {
+    "overlay_enabled": true,
+    "overlay_port": 8765,
+    "obs_enabled": false
+  }
+}
