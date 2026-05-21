@@ -2,6 +2,9 @@ import os
 import json
 from typing import Optional
 import re
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 API_BASE_URLS = {
