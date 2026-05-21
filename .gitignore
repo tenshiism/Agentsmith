@@ -43,9 +43,31 @@ Thumbs.db
 # ROMs
 roms/
 *.gb
+*.gbc
 *.gba
 *.nes
+*.sfc
 *.smc
+*.md
+*.gen
+*.n64
+*.z64
+*.v64
+*.pce
+*.gg
+*.ws
+*.wsc
+*.nds
+*.psx
+*.ps1
+*.bin
+*.iso
+*.cue
+*.3ds
+*.a26
+*.a78
+*.lnx
+*.j64
 
 # Logs
 *.log
