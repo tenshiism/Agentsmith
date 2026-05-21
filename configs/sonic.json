@@ -7,8 +7,8 @@
     "observe_every_n_frames": 15
   },
   "agent": {
-    "provider": "openai",
-    "model": "gpt-4o",
+    "provider": "openrouter",
+    "model": "qwen/qwen3.6-plus:free",
     "temperature": 0.8,
     "strategy": "aggressive",
     "max_history": 40

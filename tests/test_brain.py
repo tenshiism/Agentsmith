@@ -59,7 +59,7 @@ class TestAgentBrain:
     @pytest.fixture
     def brain(self):
         cfg = {
-            "agent": {"strategy": "balanced", "model": "gpt-4o"},
+            "agent": {"strategy": "balanced", "model": "qwen/qwen3.6-plus:free"},
             "commentary": {"personality": "chill"},
             "game": {"observe_every_n_frames": 2},
         }
@@ -119,7 +119,7 @@ class TestAgentBrain:
         assert overlay["frame"] == 0
         assert overlay["reward"] == 2.5
         assert overlay["done"] is False
-        assert overlay["model"] == "gpt-4o"
+        assert overlay["model"] == "qwen/qwen3.6-plus:free"
         assert isinstance(overlay["screenshot"], str)
         base64.b64decode(overlay["screenshot"])
 

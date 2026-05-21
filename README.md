@@ -1,4 +1,4 @@
-# AgentSmith
+# Agent Smith
 
 An AI-powered retro game streamer. AgentSmith watches a game, thinks about what to do, and provides live commentary — just like a human streamer, but powered by LLMs.
 
@@ -69,7 +69,7 @@ python src/main.py --game pokemon_red --personality energetic
     "observe_every_n_frames": 30
   },
   "agent": {
-    "model": "gpt-4o",
+    "model": "qwen/qwen3.6-plus:free",
     "temperature": 0.7,
     "strategy": "balanced",
     "max_history": 50

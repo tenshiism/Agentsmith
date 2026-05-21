@@ -4,19 +4,36 @@ from typing import Optional
 import re
 
 
+API_BASE_URLS = {
+    "openai": None,
+    "openrouter": "https://openrouter.ai/api/v1",
+}
+
+API_KEY_ENV = {
+    "openai": "OPENAI_API_KEY",
+    "openrouter": "OPENROUTER_API_KEY",
+}
+
+
 class LLMClient:
     def __init__(self, config: dict):
-        self.model = config.get("model", "gpt-4o")
+        self.model = config.get("model", "qwen/qwen3.6-plus:free")
         self.temperature = config.get("temperature", 0.7)
         self.provider = config.get("provider", "openai")
         self._client = None
 
-        if self.provider == "openai":
+        base_url = API_BASE_URLS.get(self.provider)
+        api_key = config.get("api_key") or os.getenv(API_KEY_ENV.get(self.provider, "OPENAI_API_KEY"))
+
+        if self.provider in ("openai", "openrouter"):
             import openai
-            self._client = openai.AsyncOpenAI(api_key=config.get("api_key") or os.getenv("OPENAI_API_KEY"))
+            kwargs = {"api_key": api_key}
+            if base_url:
+                kwargs["base_url"] = base_url
+            self._client = openai.AsyncOpenAI(**kwargs)
         elif self.provider == "anthropic":
             import anthropic
-            self._client = anthropic.AsyncAnthropic(api_key=config.get("api_key") or os.getenv("ANTHROPIC_API_KEY"))
+            self._client = anthropic.AsyncAnthropic(api_key=api_key)
         else:
             raise ValueError(f"Unknown provider: {self.provider}")
 
@@ -30,7 +47,7 @@ class LLMClient:
         )
         messages[0]["content"] = system_instruction
 
-        if self.provider == "openai":
+        if self.provider in ("openai", "openrouter"):
             resp = await self._client.chat.completions.create(
                 model=self.model,
                 messages=messages,
@@ -54,7 +71,7 @@ class LLMClient:
         return "none"
 
     async def commentate(self, messages: list) -> str:
-        if self.provider == "openai":
+        if self.provider in ("openai", "openrouter"):
             resp = await self._client.chat.completions.create(
                 model=self.model,
                 messages=messages,

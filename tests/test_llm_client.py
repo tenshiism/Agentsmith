@@ -4,7 +4,7 @@ from agent.llm_client import LLMClient
 
 class TestLLMClientChooseAction:
     def _make_client(self):
-        return LLMClient({"model": "gpt-4o", "provider": "openai", "api_key": "test"})
+        return LLMClient({"model": "qwen/qwen3.6-plus:free", "provider": "openrouter", "api_key": "test"})
 
     @pytest.mark.asyncio
     async def test_choose_action_parses_direct_match(self, monkeypatch):

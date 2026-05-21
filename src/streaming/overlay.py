@@ -217,7 +217,7 @@ OVERLAY_HTML = r"""<!DOCTYPE html>
     </div>
     <div class="segment">
       <span>Model:</span>
-      <span id="model-name">gpt-4o</span>
+      <span id="model-name">qwen/qwen3.6-plus:free</span>
     </div>
     <div class="segment">
       <span>FPS:</span>
