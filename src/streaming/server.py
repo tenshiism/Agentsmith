@@ -20,7 +20,11 @@ class OverlayServer:
         self._runner: web.AppRunner | None = None
         self._latest_state: dict | None = None
         self._ws_clients: set[web.WebSocketResponse] = set()
+        self._on_message = None
         self._setup_routes()
+
+    def set_message_handler(self, handler):
+        self._on_message = handler
 
     def _setup_routes(self):
         self._app.router.add_get("/", self._handle_index)
@@ -47,6 +51,8 @@ class OverlayServer:
                     data = json.loads(msg.data)
                     if data.get("type") == "ping":
                         await ws.send_json({"type": "pong"})
+                    if data.get("type") in ("set_mode", "set_status", "set_config") and self._on_message:
+                        self._on_message(data)
         except asyncio.CancelledError:
             pass
         finally:
@@ -58,7 +64,7 @@ class OverlayServer:
         if not self._ws_clients:
             return
         dead: set[web.WebSocketResponse] = set()
-        for ws in self._ws_clients:
+        for ws in set(self._ws_clients):
             try:
                 await ws.send_json(state_update)
             except (ConnectionError, asyncio.TimeoutError):

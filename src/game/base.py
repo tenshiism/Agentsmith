@@ -24,7 +24,11 @@ class GameAdapter(ABC):
         ...
 
     @abstractmethod
-    def step(self, action: list[int]) -> GameState:
+    def step(self, action: list[int]) -> None:
+        ...
+
+    @abstractmethod
+    def capture_state(self) -> GameState:
         ...
 
     @abstractmethod

@@ -42,6 +42,8 @@ Thumbs.db
 
 # ROMs
 roms/
+!roms/2048.gb
+!roms/geometrix.gbc
 *.gb
 *.gbc
 *.gba

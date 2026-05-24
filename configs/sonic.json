@@ -1,10 +1,9 @@
 {
   "game": {
-    "name": "Sonic the Hedgehog",
-    "adapter": "gym_retro",
-    "rom_name": "SonicTheHedgehog-Genesis",
-    "speed": 1.0,
-    "observe_every_n_frames": 15
+    "name": "2048",
+    "adapter": "vba",
+    "rom_path": "./roms/2048.gb",
+    "observe_every_n_frames": 30
   },
   "agent": {
     "provider": "openrouter",

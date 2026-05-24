@@ -1,25 +1,28 @@
 import pytest
+import requests
 from agent.llm_client import LLMClient
 
 
 class TestLLMClientChooseAction:
     def _make_client(self):
-        return LLMClient({"model": "qwen/qwen3.6-plus:free", "provider": "openrouter", "api_key": "test"})
+        return LLMClient({"model": "test-model", "provider": "openai", "api_key": "test", "base_url": "http://localhost:9999/v1"})
+
+    def _fake_response(self, content: str, status=200):
+        resp = requests.Response()
+        resp.status_code = status
+        resp._content = (
+            '{"choices": [{"message": {"content": "' + content + '"}}]}'
+        ).encode()
+        return resp
 
     @pytest.mark.asyncio
     async def test_choose_action_parses_direct_match(self, monkeypatch):
         client = self._make_client()
 
-        async def fake_create(*args, **kwargs):
-            class FakeChoice:
-                class Message:
-                    content = "a"
-                message = Message()
-            class FakeResp:
-                choices = [FakeChoice()]
-            return FakeResp()
+        def fake_post(*args, **kwargs):
+            return self._fake_response("a")
 
-        monkeypatch.setattr(client._client.chat.completions, "create", fake_create)
+        monkeypatch.setattr(requests, "post", fake_post)
         result = await client.choose_action(
             [{"role": "system", "content": "play"}],
             ["a", "b", "up", "down"],
@@ -30,16 +33,10 @@ class TestLLMClientChooseAction:
     async def test_choose_action_parses_partial_match(self, monkeypatch):
         client = self._make_client()
 
-        async def fake_create(*args, **kwargs):
-            class FakeChoice:
-                class Message:
-                    content = "I think we should press up"
-                message = Message()
-            class FakeResp:
-                choices = [FakeChoice()]
-            return FakeResp()
+        def fake_post(*args, **kwargs):
+            return self._fake_response("I think we should press up")
 
-        monkeypatch.setattr(client._client.chat.completions, "create", fake_create)
+        monkeypatch.setattr(requests, "post", fake_post)
         result = await client.choose_action(
             [{"role": "system", "content": "play"}],
             ["a", "b", "up", "down"],
@@ -50,16 +47,10 @@ class TestLLMClientChooseAction:
     async def test_choose_action_returns_none_on_no_match(self, monkeypatch):
         client = self._make_client()
 
-        async def fake_create(*args, **kwargs):
-            class FakeChoice:
-                class Message:
-                    content = "hmm not sure what to do"
-                message = Message()
-            class FakeResp:
-                choices = [FakeChoice()]
-            return FakeResp()
+        def fake_post(*args, **kwargs):
+            return self._fake_response("hmm not sure what to do")
 
-        monkeypatch.setattr(client._client.chat.completions, "create", fake_create)
+        monkeypatch.setattr(requests, "post", fake_post)
         result = await client.choose_action(
             [{"role": "system", "content": "play"}],
             ["a", "b", "up", "down"],

@@ -1,9 +1,8 @@
 {
   "game": {
-    "name": "Pokémon Red",
-    "adapter": "pyboy",
-    "rom_path": "./roms/pokemon_red.gb",
-    "speed": 1.0,
+    "name": "2048",
+    "adapter": "vba",
+    "rom_path": "./roms/2048.gb",
     "observe_every_n_frames": 30
   },
   "agent": {

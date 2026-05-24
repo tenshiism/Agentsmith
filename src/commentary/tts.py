@@ -6,6 +6,7 @@ class TTSController:
     def __init__(self, config: dict):
         self.enabled = config.get("commentary", {}).get("tts_enabled", False)
         self._engine = None
+        self._speaking = False
         if self.enabled:
             try:
                 import pyttsx3
@@ -16,6 +17,10 @@ class TTSController:
                 print("Warning: pyttsx3 not installed. TTS disabled.")
                 self.enabled = False
 
+    @property
+    def is_speaking(self) -> bool:
+        return self._speaking
+
     def say(self, text: str):
         if not self.enabled or not self._engine:
             return
@@ -24,10 +29,13 @@ class TTSController:
 
     def _speak(self, text: str):
         try:
+            self._speaking = True
             self._engine.say(text)
             self._engine.runAndWait()
         except Exception:
             pass
+        finally:
+            self._speaking = False
 
     def stop(self):
         if self._engine:

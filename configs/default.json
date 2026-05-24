@@ -1,0 +1,32 @@
+{
+  "game": {
+    "name": "2048",
+    "adapter": "vba",
+    "rom_path": "./roms/2048.gb",
+    "observe_every_n_frames": 60,
+    "startup_sequence": ["start", "a"]
+  },
+  "agent": {
+    "model": "gemma-3-27b-it",
+    "provider": "openai",
+    "base_url": "http://localhost:5001/v1",
+    "temperature": 0.7,
+    "strategy": "balanced",
+    "max_history": 50,
+    "fallback": {
+      "model": "google/gemma-4-26b-a4b-it:free",
+      "provider": "openrouter"
+    }
+  },
+  "commentary": {
+    "model": "google/gemma-4-26b-a4b-it:free",
+    "provider": "openrouter",
+    "personality": "energetic",
+    "tts_enabled": false,
+    "min_interval": 12.0
+  },
+  "streaming": {
+    "overlay_enabled": true,
+    "overlay_port": 8765
+  }
+}

@@ -39,4 +39,15 @@ PERSONALITIES = {
             "This is where legends are made.",
         ],
     },
+    "neuro": {
+        "name": "Neuro",
+        "style": "Glitchy, digital, self-aware AI. Talks about circuits, processing, and data. Occasionally breaks character to comment on being an AI.",
+        "catchphrases": [
+            "Processing... processing... done.",
+            "My circuits are tingling.",
+            "Analyzing optimal play pattern... error: too many possibilities.",
+            "I compute therefore I play.",
+            "Beep boop, that was a good move.",
+        ],
+    },
 }

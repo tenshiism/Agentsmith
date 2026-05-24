@@ -1,24 +1,30 @@
-# Agent Smith
+# AgentSmith
 
-An AI-powered retro game streamer. AgentSmith watches a game, thinks about what to do, and provides live commentary — just like a human streamer, but powered by LLMs.
+AI-powered retro game streamer. AgentSmith watches a game, thinks about what to do, and provides live commentary — just like a human streamer, but powered by LLMs.
 
 ## How it works
 
 ```
-┌───────────┐   frames   ┌───────────┐   actions   ┌───────────┐
-│  Game     │──────────▶│   Agent   │────────────▶│  Game     │
-│  Emulator │  screens   │   Brain   │  button     │  Emulator │
-│  / ROM    │  + RAM     │  (LLM)    │  presses    │  / ROM    │
-└───────────┘            └─────┬─────┘             └───────────┘
-                               │ commentary
-                               ▼
-                        ┌──────────────┐
-                        │  Commentary  │
-                        │  Engine      │──▶ TTS / chat / overlay
-                        └──────────────┘
+┌──────────────┐   screenshots   ┌──────────────┐   actions    ┌──────────────┐
+│  VBA.exe     │◄───────────────│   AgentBrain │─────────────►│  VBA.exe     │
+│  (subprocess)│   RAM reads     │   (LLM)      │   input inj. │  (subprocess)│
+└──────────────┘                 └──────┬───────┘              └──────────────┘
+                                        │ commentary
+                                        ▼
+                               ┌─────────────────┐
+                               │  Commentary Gen │──▶ TTS
+                               └────────┬────────┘
+                                        │ state
+                                        ▼
+                               ┌─────────────────┐
+                               │  Overlay Server │──▶ Browser / OBS browser source
+                               └────────┬────────┘
+                                        │ obs-websocket
+                                        ▼
+                               ┌─────────────────┐
+                               │  OBS Portable   │──▶ Twitch/YouTube stream
+                               └─────────────────┘
 ```
-
-**Loop:** Every N frames, the agent observes the game state (screenshot + RAM values), decides on the next move via an LLM, executes it, and narrates the action in real-time.
 
 ## Architecture
 
@@ -28,25 +34,30 @@ agentsmith/
 │   ├── main.py                 # Entry point — wires everything together
 │   ├── agent/
 │   │   ├── brain.py            # Core loop: observe → think → act → commentate
-│   │   ├── llm_client.py       # LLM API wrapper (OpenAI, Anthropic, local)
+│   │   ├── llm_client.py       # LLM API wrapper (OpenAI, OpenRouter, local)
 │   │   ├── memory.py           # Game-aware memory (short + long term)
-│   │   └── strategies.py       # Play-style configs (aggressive, speedrun, etc.)
+│   │   └── strategies.py       # Play-style configs (balanced, gentle)
 │   ├── game/
 │   │   ├── base.py             # Abstract game adapter
-│   │   ├── gym_adapter.py      # OpenAI Gym Retro adapter
-│   │   └── pyboy_adapter.py    # PyBoy (Game Boy) adapter
+│   │   └── vba_adapter.py      # VisualBoyAdvance subprocess adapter
 │   ├── commentary/
 │   │   ├── generator.py        # Generates live commentary text
-│   │   ├── personalities.py    # Streamer persona definitions
+│   │   ├── personalities.py    # 5 streamer persona definitions
 │   │   └── tts.py              # Text-to-speech output
 │   └── streaming/
-│       ├── overlay.py          # HTML/CSS overlay (PixelForge assets)
-│       ├── server.py           # WebSocket server for real-time UI
-│       └── obs_integration.py  # OBS browser source helper
+│       ├── overlay.py          # HTML overlay with VRM avatar + settings modal
+│       └── server.py           # WebSocket server for real-time UI
 ├── configs/
-│   ├── pokemon_red.json        # Game-specific config
+│   ├── default.json            # Default config (2048 via VBA)
+│   ├── pokemon_red.json        # Game-specific config (needs ROM)
 │   └── personalities/          # Personality JSON files
-├── assets/                     # PixelForge-generated overlays
+├── assets/
+│   ├── models/                 # VRM avatar models
+│   └── ...
+├── roms/
+│   ├── 2048.gb                 # Homebrew Game Boy game (Zlib license)
+│   ├── geometrix.gbc           # Homebrew GBC game (GPL v3)
+│   └── GBA/                    # GBA ROMs + VBA.exe
 └── requirements.txt
 ```
 
@@ -54,7 +65,7 @@ agentsmith/
 
 ```bash
 pip install -r requirements.txt
-python src/main.py --game pokemon_red --personality energetic
+python main.py -c configs/default.json
 ```
 
 ## Config structure
@@ -62,26 +73,33 @@ python src/main.py --game pokemon_red --personality energetic
 ```json
 {
   "game": {
-    "name": "Pokémon Red",
-    "adapter": "pyboy",
-    "rom_path": "./roms/pokemon_red.gb",
-    "speed": 1.0,
+    "name": "2048",
+    "adapter": "vba",
+    "rom_path": "./roms/2048.gb",
     "observe_every_n_frames": 30
   },
   "agent": {
-    "model": "qwen/qwen3.6-plus:free",
+    "model": "google/gemma-4-26b-a4b-it:free",
+    "provider": "openrouter",
     "temperature": 0.7,
     "strategy": "balanced",
-    "max_history": 50
+    "max_history": 50,
+    "fallback": {
+      "model": "gemma-3-27b-it",
+      "provider": "openai",
+      "base_url": "http://localhost:5001/v1"
+    }
   },
   "commentary": {
+    "model": "google/gemma-4-26b-a4b-it:free",
+    "provider": "openrouter",
     "personality": "energetic",
-    "tts_enabled": true,
-    "tts_voice": "en-US-1"
+    "tts_enabled": false,
+    "min_interval": 12.0
   },
   "streaming": {
-    "overlay_port": 8765,
-    "obs_enabled": true
+    "overlay_enabled": true,
+    "overlay_port": 8765
   }
 }
 ```

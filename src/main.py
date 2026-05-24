@@ -5,17 +5,9 @@ from pathlib import Path
 
 from agent.brain import AgentBrain
 from game.base import GameAdapter
-from game.pyboy_adapter import PyBoyAdapter
-from game.gym_adapter import GymRetroAdapter
 from commentary.generator import CommentaryGenerator
 from commentary.tts import TTSController
 from streaming.server import OverlayServer
-
-
-ADAPTERS = {
-    "pyboy": PyBoyAdapter,
-    "gym_retro": GymRetroAdapter,
-}
 
 
 def load_config(path: str) -> dict:
@@ -23,12 +15,32 @@ def load_config(path: str) -> dict:
         return json.load(f)
 
 
+def _prompt_overlay(overlay):
+    port = overlay.port
+    url = f"http://localhost:{port}"
+    try:
+        import ctypes
+        w = ctypes.create_unicode_buffer(url + "\0")
+        ctypes.windll.user32.OpenClipboard(0)
+        ctypes.windll.user32.EmptyClipboard()
+        h = ctypes.windll.kernel32.GlobalAlloc(0x42, len(url) * 2 + 2)
+        ctypes.windll.kernel32.lstrcpyW(h, w)
+        ctypes.windll.user32.SetClipboardData(13, h)
+        ctypes.windll.user32.CloseClipboard()
+        resp = ctypes.windll.user32.MessageBoxW(0, f"Overlay: {url}\n(URL copied to clipboard)\n\nOpen in browser?", "AgentSmith", 4)
+        if resp == 6:
+            import webbrowser
+            webbrowser.open(url)
+    except Exception:
+        print(f"\nOverlay: {url}")
+
+
 def build_adapter(cfg: dict) -> GameAdapter:
     kind = cfg["game"]["adapter"]
-    cls = ADAPTERS.get(kind)
-    if not cls:
-        raise ValueError(f"Unknown adapter '{kind}'. Available: {list(ADAPTERS)}")
-    return cls(cfg)
+    if kind == "vba":
+        from game.vba_adapter import VBAAdapter
+        return VBAAdapter(cfg)
+    raise ValueError(f"Unknown adapter '{kind}'. Available: vba")
 
 
 async def main():
@@ -47,8 +59,27 @@ async def main():
     if cfg.get("streaming", {}).get("overlay_enabled", True):
         overlay = OverlayServer(cfg)
         await overlay.start()
+        if not args.headless:
+            _prompt_overlay(overlay)
 
-    brain = AgentBrain(cfg, game, commentary, overlay=overlay)
+    from agent.llm_client import LLMClient
+    agent_cfg = cfg.get("agent", {})
+    llm_action = LLMClient(agent_cfg)
+    llm_action_fallback = LLMClient(agent_cfg["fallback"]) if agent_cfg.get("fallback") else None
+    commentary_cfg = cfg.get("commentary", {})
+    llm_commentary = LLMClient(commentary_cfg) if commentary_cfg.get("model") else llm_action
+
+    brain = AgentBrain(cfg, game, commentary, overlay=overlay, llm=llm_action, llm_commentary=llm_commentary, llm_fallback=llm_action_fallback)
+
+    if overlay:
+        def _on_overlay_msg(d):
+            if d.get("type") == "set_mode":
+                brain.set_mode(d.get("mode", "gentle"))
+            elif d.get("type") == "set_config":
+                brain.set_config(d.get("config", {}))
+            elif d.get("type") == "set_status":
+                brain.set_status(d.get("status", "idle"))
+        overlay.set_message_handler(_on_overlay_msg)
 
     try:
         await brain.run(headless=args.headless)
