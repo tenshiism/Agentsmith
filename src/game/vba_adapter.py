@@ -5,7 +5,6 @@ import subprocess
 import time
 from pathlib import Path
 from typing import Optional
-from collections import defaultdict
 
 import mss
 from mss.exception import ScreenShotError
@@ -15,10 +14,10 @@ from PIL import Image
 from .base import GameAdapter, GameState
 
 _VBA_KEY_MAP = {
-    "a": 0x4C,
-    "b": 0x4B,
+    "a": 0x5A,
+    "b": 0x58,
     "start": 0x0D,
-    "select": 0x0F,
+    "select": 0x08,
     "up": 0x26,
     "down": 0x28,
     "left": 0x25,
@@ -30,12 +29,8 @@ _GB_RAM_RANGES = [
     (0xFF00, 0xFF7F),
 ]
 
-
-WM_KEYDOWN = 0x0100
-WM_KEYUP = 0x0101
-
-def _post_key(hwnd: int, vkey: int, key_up: bool):
-    ctypes.windll.user32.PostMessageW(hwnd, WM_KEYUP if key_up else WM_KEYDOWN, vkey, 0)
+def _send_key(vk: int, press: bool):
+    ctypes.windll.user32.keybd_event(vk, 0, 0 if press else 2, 0)
 
 
 class VBAAdapter(GameAdapter):
@@ -45,6 +40,7 @@ class VBAAdapter(GameAdapter):
         self._hwnd: Optional[int] = None
         self._action_names = ["a", "b", "up", "down", "left", "right", "start", "select"]
         self._last_error_time = 0.0
+        self._held_vkeys: set[int] = set()
 
         vba_path = config.get("game", {}).get("vba_path")
         if vba_path:
@@ -70,6 +66,16 @@ class VBAAdapter(GameAdapter):
         self._rom_path = str(rom_path)
         if not Path(self._rom_path).exists():
             raise FileNotFoundError(f"ROM not found: {self._rom_path}")
+
+    def set_rom_path(self, path: str) -> None:
+        raw = path
+        rom_path = Path(raw)
+        if not rom_path.is_absolute():
+            rom_path = Path(__file__).resolve().parent.parent.parent / rom_path
+        resolved = str(rom_path)
+        if not Path(resolved).exists():
+            raise FileNotFoundError(f"ROM not found: {resolved}")
+        self._rom_path = resolved
 
     def load_rom(self, path: str = "") -> None:
         rom = path or self._rom_path
@@ -109,6 +115,9 @@ class VBAAdapter(GameAdapter):
         return self._action_names
 
     def close(self) -> None:
+        for vk in self._held_vkeys:
+            _send_key(vk, False)
+        self._held_vkeys.clear()
         if self._process:
             try:
                 self._process.terminate()
@@ -120,18 +129,23 @@ class VBAAdapter(GameAdapter):
 
     def _find_vba_window(self) -> Optional[int]:
         target = None
+        max_area = 0
         rom_name = Path(self._rom_path).stem
 
         def enum_callback(hwnd, _):
-            nonlocal target
+            nonlocal target, max_area
             length = ctypes.windll.user32.GetWindowTextLengthW(hwnd)
             if length > 0:
                 buf = ctypes.create_unicode_buffer(length + 1)
                 ctypes.windll.user32.GetWindowTextW(hwnd, buf, length + 1)
                 title = buf.value
                 if "VisualBoyAdvance" in title or rom_name in title:
-                    target = hwnd
-                    return False
+                    rect = ctypes.wintypes.RECT()
+                    ctypes.windll.user32.GetClientRect(hwnd, ctypes.byref(rect))
+                    area = (rect.right - rect.left) * (rect.bottom - rect.top)
+                    if area > max_area:
+                        max_area = area
+                        target = hwnd
             return True
 
         WNDENUMPROC = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.wintypes.HWND, ctypes.wintypes.LPARAM)
@@ -142,15 +156,27 @@ class VBAAdapter(GameAdapter):
         if not self._hwnd:
             return
 
+        wanted: set[int] = set()
         for i, pressed in enumerate(action):
             if i >= len(self._action_names):
                 break
-            name = self._action_names[i]
-            vkey = _VBA_KEY_MAP.get(name)
-            if vkey is None:
-                continue
+            if pressed:
+                name = self._action_names[i]
+                vkey = _VBA_KEY_MAP.get(name)
+                if vkey is not None:
+                    wanted.add(vkey)
 
-            _post_key(self._hwnd, vkey, key_up=not pressed)
+        keys_to_press = wanted - self._held_vkeys
+        keys_to_release = self._held_vkeys - wanted
+        if not keys_to_press and not keys_to_release:
+            return
+
+        for vk in keys_to_press:
+            _send_key(vk, True)
+        for vk in keys_to_release:
+            _send_key(vk, False)
+
+        self._held_vkeys = wanted
 
     def _capture_state(self) -> GameState:
         screenshot = self._capture_screenshot()

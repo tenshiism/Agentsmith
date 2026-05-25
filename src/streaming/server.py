@@ -51,7 +51,7 @@ class OverlayServer:
                     data = json.loads(msg.data)
                     if data.get("type") == "ping":
                         await ws.send_json({"type": "pong"})
-                    if data.get("type") in ("set_mode", "set_status", "set_config") and self._on_message:
+                    if data.get("type") in ("set_mode", "set_status", "set_config", "change_game") and self._on_message:
                         self._on_message(data)
         except asyncio.CancelledError:
             pass

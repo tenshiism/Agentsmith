@@ -4,22 +4,22 @@
     "adapter": "vba",
     "rom_path": "./roms/2048.gb",
     "observe_every_n_frames": 60,
-    "startup_sequence": ["start", "a"]
+    "startup_sequence": []
   },
   "agent": {
-    "model": "gemma-3-27b-it",
-    "provider": "openai",
-    "base_url": "http://localhost:5001/v1",
+    "model": "google/gemma-3-12b-it",
+    "provider": "openrouter",
     "temperature": 0.7,
     "strategy": "balanced",
     "max_history": 50,
     "fallback": {
       "model": "google/gemma-4-26b-a4b-it:free",
-      "provider": "openrouter"
+      "provider": "openrouter",
+      "base_url": "https://openrouter.ai/api/v1"
     }
   },
   "commentary": {
-    "model": "google/gemma-4-26b-a4b-it:free",
+    "model": "google/gemma-3-12b-it",
     "provider": "openrouter",
     "personality": "energetic",
     "tts_enabled": false,

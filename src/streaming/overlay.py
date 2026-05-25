@@ -43,6 +43,7 @@ OVERLAY_HTML = r"""<!DOCTYPE html>
     overflow: hidden;
     background: #000;
     box-shadow: 0 0 30px rgba(255, 107, 53, 0.3);
+    position: relative;
   }
 
   #game-container img {
@@ -50,6 +51,7 @@ OVERLAY_HTML = r"""<!DOCTYPE html>
     height: 100%;
     image-rendering: pixelated;
     object-fit: contain;
+    transform-origin: center center;
   }
 
   /* ---- Right panel: avatar + info grid ---- */
@@ -283,12 +285,23 @@ OVERLAY_HTML = r"""<!DOCTYPE html>
     from { opacity: 0; transform: translateY(8px); }
     to   { opacity: 1; transform: translateY(0); }
   }
+
 </style>
 </head>
 <body>
 <div id="overlay">
   <div id="game-container">
     <img id="game-screen" src="" alt="Game screen">
+    <div id="res-toggle" style="
+      position: absolute; bottom: 6px; left: 6px;
+      background: rgba(0,0,0,0.7); border-radius: 4px;
+      padding: 2px 8px; font-size: 11px;
+      display: flex; align-items: center; gap: 6px;
+      cursor: pointer; z-index: 10;
+    ">
+      <input type="checkbox" id="res-check" style="cursor:pointer;">
+      <label for="res-check" id="res-label" style="cursor:pointer;color:#aaa;">AI View</label>
+    </div>
   </div>
 
   <div id="right-panel">
@@ -320,11 +333,13 @@ OVERLAY_HTML = r"""<!DOCTYPE html>
           <select id="mode-select" class="mode-select">
             <option value="gentle">Gentle</option>
             <option value="balanced">Balanced</option>
+            <option value="custom">Custom</option>
           </select>
         </div>
         <div class="stat-row mode-row" style="margin-top:4px;">
           <span class="stat-label">AI</span>
           <button id="ai-toggle" class="ai-btn ai-idle">START</button>
+          <button id="ai-stop" class="ai-btn" style="background:#c62828;margin-left:6px;">STOP</button>
           <button id="settings-toggle" class="ai-btn" style="background:#555;margin-left:6px;">SETTINGS</button>
         </div>
       </div>
@@ -332,25 +347,117 @@ OVERLAY_HTML = r"""<!DOCTYPE html>
 
     <!-- Settings Modal -->
     <div id="settings-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:1000;justify-content:center;align-items:center;">
-      <div style="background:#1a1a2e;border:2px solid #ff6b35;border-radius:8px;padding:20px;width:400px;max-height:80vh;overflow-y:auto;">
-        <h2 style="font-family:'Press Start 2P',monospace;font-size:12px;color:#ff6b35;margin-bottom:16px;">AI SETTINGS</h2>
+      <div id="settings-dialog" style="background:#1a1a2e;border:2px solid #ff6b35;border-radius:8px;padding:20px;width:500px;min-width:360px;min-height:300px;max-height:90vh;overflow:auto;resize:both;">
+        <h2 style="font-family:'Press Start 2P',monospace;font-size:12px;color:#ff6b35;margin-bottom:16px;display:flex;align-items:center;gap:8px;">
+          AI SETTINGS
+          <span id="settings-expand" style="font-size:10px;color:#ff6b35;cursor:pointer;border:1px solid #ff6b35;border-radius:3px;padding:1px 7px;user-select:none;white-space:nowrap;margin-left:auto;">[+]</span>
+        </h2>
 
+        <!-- Action Model -->
         <h3 style="font-size:11px;color:#aaa;margin:12px 0 6px;text-transform:uppercase;">Action Model</h3>
         <label style="font-size:11px;color:#888;">Provider</label>
-        <input id="cfg-action-provider" class="mode-select" style="width:100%;margin-bottom:6px;padding:4px 8px;" value="openrouter">
+        <select id="cfg-action-provider" class="mode-select" style="width:100%;margin-bottom:6px;padding:4px 8px;">
+          <option value="openrouter">OpenRouter</option>
+          <option value="openai">OpenAI</option>
+          <option value="kobold">Kobold (Local)</option>
+        </select>
         <label style="font-size:11px;color:#888;">Model</label>
-        <input id="cfg-action-model" class="mode-select" style="width:100%;margin-bottom:6px;padding:4px 8px;" value="google/gemma-4-26b-a4b-it:free">
+        <select id="cfg-action-model" class="mode-select" style="width:100%;margin-bottom:6px;padding:4px 8px;"></select>
         <label style="font-size:11px;color:#888;">Base URL</label>
-        <input id="cfg-action-url" class="mode-select" style="width:100%;margin-bottom:6px;padding:4px 8px;">
+        <select id="cfg-action-url" class="mode-select" style="width:100%;margin-bottom:4px;padding:4px 8px;">
+          <option value="https://openrouter.ai/api/v1">OpenRouter</option>
+          <option value="https://api.openai.com/v1">OpenAI</option>
+          <option value="http://localhost:5001/v1">Kobold (Local)</option>
+          <option value="__custom__">Custom...</option>
+        </select>
+        <input id="cfg-action-url-custom" class="mode-select" style="width:100%;margin-bottom:6px;padding:4px 8px;display:none;" placeholder="Enter custom base URL...">
 
+        <div style="display:flex;gap:8px;margin-top:4px;">
+          <div style="flex:1;">
+            <label style="font-size:11px;color:#888;">Temperature</label>
+            <input id="cfg-action-temp" class="mode-select" style="width:100%;padding:4px 8px;" type="number" step="0.05" min="0" max="2" value="0.7">
+          </div>
+          <div style="flex:1;">
+            <label style="font-size:11px;color:#888;">Max Tokens</label>
+            <input id="cfg-action-maxtokens" class="mode-select" style="width:100%;padding:4px 8px;" type="number" step="1" min="1" max="200" value="10">
+          </div>
+        </div>
+
+        <!-- Commentary Model -->
         <h3 style="font-size:11px;color:#aaa;margin:12px 0 6px;text-transform:uppercase;">Commentary Model</h3>
         <label style="font-size:11px;color:#888;">Provider</label>
-        <input id="cfg-comm-provider" class="mode-select" style="width:100%;margin-bottom:6px;padding:4px 8px;" value="openrouter">
+        <select id="cfg-comm-provider" class="mode-select" style="width:100%;margin-bottom:6px;padding:4px 8px;">
+          <option value="openrouter">OpenRouter</option>
+          <option value="openai">OpenAI</option>
+          <option value="kobold">Kobold (Local)</option>
+        </select>
         <label style="font-size:11px;color:#888;">Model</label>
-        <input id="cfg-comm-model" class="mode-select" style="width:100%;margin-bottom:6px;padding:4px 8px;" value="google/gemma-4-26b-a4b-it:free">
+        <select id="cfg-comm-model" class="mode-select" style="width:100%;margin-bottom:6px;padding:4px 8px;"></select>
         <label style="font-size:11px;color:#888;">Base URL</label>
-        <input id="cfg-comm-url" class="mode-select" style="width:100%;margin-bottom:6px;padding:4px 8px;">
+        <select id="cfg-comm-url" class="mode-select" style="width:100%;margin-bottom:4px;padding:4px 8px;">
+          <option value="https://openrouter.ai/api/v1">OpenRouter</option>
+          <option value="https://api.openai.com/v1">OpenAI</option>
+          <option value="http://localhost:5001/v1">Kobold (Local)</option>
+          <option value="__custom__">Custom...</option>
+        </select>
+        <input id="cfg-comm-url-custom" class="mode-select" style="width:100%;margin-bottom:6px;padding:4px 8px;display:none;" placeholder="Enter custom base URL...">
 
+        <div style="display:flex;gap:8px;margin-top:4px;">
+          <div style="flex:1;">
+            <label style="font-size:11px;color:#888;">Temperature</label>
+            <input id="cfg-comm-temp" class="mode-select" style="width:100%;padding:4px 8px;" type="number" step="0.05" min="0" max="2" value="0.9">
+          </div>
+          <div style="flex:1;">
+            <label style="font-size:11px;color:#888;">Max Tokens</label>
+            <input id="cfg-comm-maxtokens" class="mode-select" style="width:100%;padding:4px 8px;" type="number" step="1" min="1" max="500" value="120">
+          </div>
+        </div>
+
+        <!-- Game -->
+        <h3 style="font-size:11px;color:#aaa;margin:12px 0 6px;text-transform:uppercase;">Game</h3>
+        <select id="cfg-game" class="mode-select" style="width:100%;padding:4px 8px;">
+          <option value="">-- Select game --</option>
+        </select>
+
+        <!-- Behavior -->
+        <h3 style="font-size:11px;color:#aaa;margin:12px 0 6px;text-transform:uppercase;">Behavior</h3>
+        <div style="display:flex;gap:8px;">
+          <div style="flex:1;">
+            <label style="font-size:11px;color:#888;">Strategy</label>
+            <select id="cfg-strategy" class="mode-select" style="width:100%;padding:4px 8px;">
+              <option value="balanced">Balanced</option>
+              <option value="aggressive">Aggressive</option>
+              <option value="cautious">Cautious</option>
+              <option value="explorer">Explorer</option>
+            </select>
+          </div>
+          <div style="flex:1;">
+            <label style="font-size:11px;color:#888;">Personality</label>
+            <select id="cfg-personality" class="mode-select" style="width:100%;padding:4px 8px;">
+              <option value="energetic">Energetic</option>
+              <option value="chill">Chill</option>
+              <option value="sarcastic">Sarcastic</option>
+              <option value="lore_keeper">Lore Keeper</option>
+              <option value="neuro">Neuro</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Toggles -->
+        <h3 style="font-size:11px;color:#aaa;margin:12px 0 6px;text-transform:uppercase;">Toggles</h3>
+        <div style="display:flex;gap:12px;margin-top:8px;flex-wrap:wrap;">
+          <label style="font-size:11px;color:#888;display:flex;align-items:center;gap:4px;">
+            <input id="cfg-tts-enabled" type="checkbox"> TTS Enabled
+          </label>
+          <label style="font-size:11px;color:#888;display:flex;align-items:center;gap:4px;">
+            <input id="cfg-commentary-enabled" type="checkbox" checked> Commentary Enabled
+          </label>
+          <label style="font-size:11px;color:#888;display:flex;align-items:center;gap:4px;">
+            <input id="cfg-shared-cooldown" type="checkbox"> Shared Cooldown
+          </label>
+        </div>
+
+        <!-- Timing -->
         <h3 style="font-size:11px;color:#aaa;margin:12px 0 6px;text-transform:uppercase;">Timing</h3>
         <div style="display:flex;gap:8px;">
           <div style="flex:1;">
@@ -359,7 +466,7 @@ OVERLAY_HTML = r"""<!DOCTYPE html>
           </div>
           <div style="flex:1;">
             <label style="font-size:11px;color:#888;">Comm Interval (s)</label>
-            <input id="cfg-comm-interval" class="mode-select" style="width:100%;padding:4px 8px;" type="number" step="0.5" value="12.0">
+            <input id="cfg-comm-interval" class="mode-select" style="width:100%;padding:4px 8px;" type="number" step="0.5" value="30.0">
           </div>
         </div>
         <div style="display:flex;gap:8px;margin-top:6px;">
@@ -373,11 +480,6 @@ OVERLAY_HTML = r"""<!DOCTYPE html>
           </div>
         </div>
 
-        <div style="display:flex;gap:8px;margin-top:6px;">
-          <label style="font-size:11px;color:#888;display:flex;align-items:center;gap:4px;">
-            <input id="cfg-shared-cooldown" type="checkbox" checked> Shared Cooldown
-          </label>
-        </div>
 
         <div style="display:flex;gap:8px;margin-top:16px;">
           <button id="settings-save" class="ai-btn" style="background:#2e7d32;flex:1;">SAVE</button>
@@ -395,7 +497,7 @@ OVERLAY_HTML = r"""<!DOCTYPE html>
   <div id="commentary-bar">
     <span class="vtuber-indicator idle" id="vtuber-indicator"></span>
     <span class="label">LIVE</span>
-    <span class="text" id="commentary-text">Waiting for the stream to start...</span>
+    <span class="text" id="commentary-text">-</span>
   </div>
 
   <div id="bottom-bar">
@@ -405,7 +507,7 @@ OVERLAY_HTML = r"""<!DOCTYPE html>
     </div>
     <div class="segment">
       <span>Model:</span>
-      <span id="model-name">qwen/qwen3.6-plus:free</span>
+      <span id="model-name">-</span>
     </div>
     <div class="segment">
       <span>FPS:</span>
@@ -415,8 +517,20 @@ OVERLAY_HTML = r"""<!DOCTYPE html>
       <span>VTuber:</span>
       <span id="vtuber-name" style="color:#ff6b35;">-</span>
     </div>
-    <div class="strategy" id="strategy-display">STRATEGY: BALANCED</div>
+    <div class="strategy" id="strategy-display">STRATEGY: -</div>
   </div>
+</div>
+
+<div id="cost-bar" style="
+  position: fixed; bottom: 0; left: 0; right: 0;
+  height: 24px; background: rgba(0,0,0,0.8);
+  color: #aaa; font-size: 12px; font-family: monospace;
+  display: flex; align-items: center; padding: 0 12px;
+  z-index: 1000;
+">
+  <span id="cost-display">Cost: $0.000000</span>
+  <span style="margin-left: 16px;" id="cost-rate">($0.00/hr)</span>
+  <span style="margin-left: auto;" id="cost-model"></span>
 </div>
 
 <script type="importmap">
@@ -641,6 +755,119 @@ aiBtn.addEventListener('click', () => {
   }
 });
 
+// --- Provider/model/URL mappings ---
+const MODEL_MAP = {
+  "openrouter": [
+    "google/gemma-4-26b-a4b-it:free",
+    "google/gemma-4-31b-it:free",
+    "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+    "nvidia/nemotron-nano-12b-v2-vl:free",
+    "openrouter/free",
+    "google/gemma-3-4b-it",
+    "google/gemma-3-12b-it",
+    "qwen/qwen3.5-9b",
+    "openai/gpt-5-nano",
+    "qwen/qwen3.5-flash-02-23",
+    "google/gemini-2.0-flash-001",
+    "google/gemini-2.0-flash-lite-001",
+    "google/gemini-2.5-flash-001",
+  ],
+  "openai": ["gpt-4o", "gpt-4o-mini", "gpt-4.1", "gpt-4.1-nano"],
+  "kobold": [""],
+};
+const BASE_URL_MAP = {
+  "openrouter": "https://openrouter.ai/api/v1",
+  "openai": "https://api.openai.com/v1",
+  "kobold": "http://localhost:5001/v1",
+};
+
+const MODEL_PRICING = {
+  "google/gemma-4-26b-a4b-it:free":             { prompt: 0, completion: 0, image: 0 },
+  "google/gemma-4-31b-it:free":                  { prompt: 0, completion: 0, image: 0 },
+  "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free": { prompt: 0, completion: 0, image: 0 },
+  "nvidia/nemotron-nano-12b-v2-vl:free":         { prompt: 0, completion: 0, image: 0 },
+  "openrouter/free":                              { prompt: 0, completion: 0, image: 0 },
+  "google/gemma-3-4b-it":                        { prompt: 4e-8, completion: 8e-8, image: 3.4e-6 },
+  "google/gemma-3-12b-it":                       { prompt: 4e-8, completion: 1.3e-7, image: 3.4e-6 },
+  "qwen/qwen3.5-9b":                             { prompt: 4e-8, completion: 1.5e-7, image: 3.4e-6 },
+  "openai/gpt-5-nano":                           { prompt: 5e-8, completion: 4e-7, image: 4.25e-6 },
+  "qwen/qwen3.5-flash-02-23":                    { prompt: 6.5e-8, completion: 2.6e-7, image: 5.5e-6 },
+  "google/gemini-2.0-flash-001":                 { prompt: 1e-7, completion: 4e-7, image: 8.5e-6 },
+  "google/gemini-2.0-flash-lite-001":            { prompt: 7.5e-8, completion: 3e-7, image: 6.4e-6 },
+  "google/gemini-2.5-flash-001":                 { prompt: 1.5e-7, completion: 6e-7, image: 1.28e-5 },
+};
+
+function priceLabel(p) {
+  if (p === 0) return 'free';
+  const perM = p * 1000000;
+  if (perM >= 1) return '$' + perM.toFixed(2) + '/M';
+  if (perM >= 0.01) return '$' + perM.toFixed(3) + '/M';
+  return '$' + perM.toFixed(4) + '/M';
+}
+
+function priceSingle(p) {
+  const per1k = p * 1000;
+  if (per1k >= 0.1) return '$' + per1k.toFixed(2) + '/1k';
+  return '$' + (p * 1000000).toFixed(2) + '/M';
+}
+
+function populateModels(providerId, modelId) {
+  const provider = document.getElementById(providerId).value;
+  const modelSelect = document.getElementById(modelId);
+  const models = MODEL_MAP[provider] || [""];
+  modelSelect.innerHTML = models.map(m => {
+    if (m === "") return '<option value="">---</option>';
+    const p = MODEL_PRICING[m];
+    let suffix = '';
+    if (p) {
+      if (p.prompt === 0 && p.completion === 0) {
+        suffix = '  (free)';
+      } else {
+        suffix = `  (${priceLabel(p.prompt)} in, ${priceLabel(p.completion)} out`;
+        if (p.image && p.image > 0) {
+          suffix += ` +${priceSingle(p.image)} img)`;
+        } else {
+          suffix += ')';
+        }
+      }
+    }
+    return `<option value="${m}">${m}${suffix}</option>`;
+  }).join('');
+}
+
+function syncBaseUrl(providerId, urlId, customId) {
+  const provider = document.getElementById(providerId).value;
+  const urlSelect = document.getElementById(urlId);
+  const customInput = document.getElementById(customId);
+  urlSelect.value = BASE_URL_MAP[provider] || "";
+  customInput.style.display = 'none';
+  customInput.value = '';
+}
+
+function setupProviderGroup(providerId, modelId, urlId, customId) {
+  const provEl = document.getElementById(providerId);
+  provEl.addEventListener('change', () => {
+    populateModels(providerId, modelId);
+    syncBaseUrl(providerId, urlId, customId);
+  });
+  const urlEl = document.getElementById(urlId);
+  urlEl.addEventListener('change', () => {
+    const customInput = document.getElementById(customId);
+    if (urlEl.value === '__custom__') {
+      customInput.style.display = '';
+      customInput.value = '';
+    } else {
+      customInput.style.display = 'none';
+      customInput.value = '';
+    }
+  });
+  populateModels(providerId, modelId);
+  syncBaseUrl(providerId, urlId, customId);
+}
+
+setupProviderGroup('cfg-action-provider', 'cfg-action-model', 'cfg-action-url', 'cfg-action-url-custom');
+setupProviderGroup('cfg-comm-provider', 'cfg-comm-model', 'cfg-comm-url', 'cfg-comm-url-custom');
+
 // Settings modal
 const settingsModal = document.getElementById('settings-modal');
 document.getElementById('settings-toggle').addEventListener('click', () => {
@@ -649,27 +876,71 @@ document.getElementById('settings-toggle').addEventListener('click', () => {
 document.getElementById('settings-close').addEventListener('click', () => {
   settingsModal.style.display = 'none';
 });
+document.getElementById('settings-expand').addEventListener('click', (e) => {
+  e.stopPropagation();
+  const dialog = document.getElementById('settings-dialog');
+  const expanded = dialog.dataset.expanded === 'true';
+  if (expanded) {
+    dialog.style.width = '';
+    dialog.dataset.expanded = 'false';
+    e.target.textContent = '[+]';
+  } else {
+    dialog.style.width = 'min(85vw, 1400px)';
+    dialog.dataset.expanded = 'true';
+    e.target.textContent = '[-]';
+  }
+});
+document.getElementById('cfg-game').addEventListener('change', (e) => {
+  const path = e.target.value;
+  if (!path) return;
+  const name = e.target.options[e.target.selectedIndex].text;
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: 'change_game', rom_path: path, game_name: name }));
+    document.getElementById('cfg-game').disabled = true;
+    setTimeout(() => { document.getElementById('cfg-game').disabled = false; }, 3000);
+  }
+  e.target.value = '';
+});
 settingsModal.addEventListener('click', (e) => {
   if (e.target === settingsModal) settingsModal.style.display = 'none';
 });
 document.getElementById('settings-save').addEventListener('click', () => {
+  function readUrl(providerId, urlId, customId) {
+    const urlSelect = document.getElementById(urlId);
+    const customInput = document.getElementById(customId);
+    if (urlSelect.value === '__custom__') return customInput.value || '';
+    return urlSelect.value;
+  }
   const config = {
     min_llm_interval: parseFloat(document.getElementById('cfg-action-interval').value) || 12,
-    min_commentary_interval: parseFloat(document.getElementById('cfg-comm-interval').value) || 12,
+    min_commentary_interval: parseFloat(document.getElementById('cfg-comm-interval').value) || 30,
     shared_ai_cooldown: document.getElementById('cfg-shared-cooldown').checked,
     retry_rate_base: parseFloat(document.getElementById('cfg-retry-base').value) || 2,
     retry_rate_max: parseFloat(document.getElementById('cfg-retry-max').value) || 30,
     action_model_provider: document.getElementById('cfg-action-provider').value || 'openrouter',
-    action_model_name: document.getElementById('cfg-action-model').value || 'google/gemma-4-26b-a4b-it:free',
-    action_model_base_url: document.getElementById('cfg-action-url').value || '',
+    action_model_name: document.getElementById('cfg-action-model').value || '',
+    action_model_base_url: readUrl('cfg-action-provider', 'cfg-action-url', 'cfg-action-url-custom'),
+    action_temperature: parseFloat(document.getElementById('cfg-action-temp').value) || 0.7,
+    action_max_tokens: parseInt(document.getElementById('cfg-action-maxtokens').value) || 10,
     commentary_model_provider: document.getElementById('cfg-comm-provider').value || 'openrouter',
-    commentary_model_name: document.getElementById('cfg-comm-model').value || 'google/gemma-4-26b-a4b-it:free',
-    commentary_model_base_url: document.getElementById('cfg-comm-url').value || '',
+    commentary_model_name: document.getElementById('cfg-comm-model').value || '',
+    commentary_model_base_url: readUrl('cfg-comm-provider', 'cfg-comm-url', 'cfg-comm-url-custom'),
+    commentary_temperature: parseFloat(document.getElementById('cfg-comm-temp').value) || 0.9,
+    commentary_max_tokens: parseInt(document.getElementById('cfg-comm-maxtokens').value) || 120,
+    strategy: document.getElementById('cfg-strategy').value || 'balanced',
+    personality: document.getElementById('cfg-personality').value || 'energetic',
+    tts_enabled: document.getElementById('cfg-tts-enabled').checked,
+    commentary_enabled: document.getElementById('cfg-commentary-enabled').checked,
   };
   if (ws && ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify({ type: 'set_config', config }));
   }
   settingsModal.style.display = 'none';
+});
+document.getElementById('ai-stop').addEventListener('click', () => {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: 'set_status', status: 'idle' }));
+  }
 });
 
 let ws = null;
@@ -682,8 +953,11 @@ function connectWS() {
     wsReconnectDelay = 1000;
     const data = JSON.parse(event.data);
 
-    if (data.screenshot) {
-      document.getElementById('game-screen').src = 'data:image/png;base64,' + data.screenshot;
+    if (data.screenshot || data.screenshot_full) {
+      const src = useAiView ? data.screenshot : data.screenshot_full;
+      if (src) {
+        document.getElementById('game-screen').src = 'data:image/jpeg;base64,' + src;
+      }
     }
 
     const rewardEl = document.getElementById('reward-value');
@@ -748,6 +1022,19 @@ function connectWS() {
       document.getElementById('mode-select').value = data.mode;
     }
 
+    if (data.available_games) {
+      const sel = document.getElementById('cfg-game');
+      const current = sel.value;
+      sel.innerHTML = '<option value="">-- Select game --</option>' +
+        data.available_games.map(g => '<option value="' + g.path + '">' + g.name + '</option>').join('');
+      if (data.game_path && data.available_games.some(g => g.path === data.game_path)) {
+        sel.value = data.game_path;
+      } else if (data.game_name) {
+        const match = data.available_games.find(g => g.name === data.game_name);
+        if (match) sel.value = match.path;
+      }
+    }
+
     if (data.status && data.status !== lastStatus) {
       lastStatus = data.status;
       if (data.status === 'running') {
@@ -759,19 +1046,82 @@ function connectWS() {
       }
     }
 
-    if (data.config) {
+    if (data.config && settingsModal.style.display !== 'flex') {
       const c = data.config;
-      document.getElementById('cfg-action-provider').value = c.action_model_provider || '';
-      document.getElementById('cfg-action-model').value = c.action_model_name || '';
-      document.getElementById('cfg-action-url').value = c.action_model_base_url || '';
-      document.getElementById('cfg-comm-provider').value = c.commentary_model_provider || '';
-      document.getElementById('cfg-comm-model').value = c.commentary_model_name || '';
-      document.getElementById('cfg-comm-url').value = c.commentary_model_base_url || '';
+      // Restore provider selects
+      document.getElementById('cfg-action-provider').value = c.action_model_provider || 'openrouter';
+      document.getElementById('cfg-comm-provider').value = c.commentary_model_provider || 'openrouter';
+      // Populate model dropdowns then set value
+      populateModels('cfg-action-provider', 'cfg-action-model');
+      populateModels('cfg-comm-provider', 'cfg-comm-model');
+      const aModel = document.getElementById('cfg-action-model');
+      const cModel = document.getElementById('cfg-comm-model');
+      const hasOpt = (sel, val) => Array.from(sel.options).some(o => o.value === val);
+      if (c.action_model_name && !hasOpt(aModel, c.action_model_name)) {
+        const opt = document.createElement('option');
+        opt.value = c.action_model_name;
+        opt.textContent = c.action_model_name;
+        aModel.appendChild(opt);
+      }
+      aModel.value = c.action_model_name || '';
+      if (c.commentary_model_name && !hasOpt(cModel, c.commentary_model_name)) {
+        const opt = document.createElement('option');
+        opt.value = c.commentary_model_name;
+        opt.textContent = c.commentary_model_name;
+        cModel.appendChild(opt);
+      }
+      cModel.value = c.commentary_model_name || '';
+      // Restore base URL selects
+      const actionUrl = document.getElementById('cfg-action-url');
+      const commUrl = document.getElementById('cfg-comm-url');
+      const actionCustom = document.getElementById('cfg-action-url-custom');
+      const commCustom = document.getElementById('cfg-comm-url-custom');
+      const actionBase = c.action_model_base_url || BASE_URL_MAP[c.action_model_provider] || '';
+      const commBase = c.commentary_model_base_url || BASE_URL_MAP[c.commentary_model_provider] || '';
+      if (actionBase && !hasOpt(actionUrl, actionBase)) {
+        actionUrl.value = '__custom__';
+        actionCustom.style.display = '';
+        actionCustom.value = actionBase;
+      } else {
+        actionUrl.value = actionBase;
+        actionCustom.style.display = 'none';
+      }
+      if (commBase && !hasOpt(commUrl, commBase)) {
+        commUrl.value = '__custom__';
+        commCustom.style.display = '';
+        commCustom.value = commBase;
+      } else {
+        commUrl.value = commBase;
+        commCustom.style.display = 'none';
+      }
+      // Remaining fields
+      document.getElementById('cfg-action-temp').value = c.action_temperature ?? 0.7;
+      document.getElementById('cfg-action-maxtokens').value = c.action_max_tokens ?? 10;
+      document.getElementById('cfg-comm-temp').value = c.commentary_temperature ?? 0.9;
+      document.getElementById('cfg-comm-maxtokens').value = c.commentary_max_tokens ?? 120;
+      document.getElementById('cfg-strategy').value = c.strategy || 'balanced';
+      document.getElementById('cfg-personality').value = c.personality || 'energetic';
+      document.getElementById('cfg-tts-enabled').checked = c.tts_enabled ?? false;
+      document.getElementById('cfg-commentary-enabled').checked = c.commentary_enabled ?? true;
       document.getElementById('cfg-action-interval').value = c.min_llm_interval ?? 12;
-      document.getElementById('cfg-comm-interval').value = c.min_commentary_interval ?? 12;
+      document.getElementById('cfg-comm-interval').value = c.min_commentary_interval ?? 30;
       document.getElementById('cfg-retry-base').value = c.retry_rate_base ?? 2;
       document.getElementById('cfg-retry-max').value = c.retry_rate_max ?? 30;
-      document.getElementById('cfg-shared-cooldown').checked = c.shared_ai_cooldown ?? true;
+      document.getElementById('cfg-shared-cooldown').checked = c.shared_ai_cooldown ?? false;
+      // Restore game selector
+      const gameSel = document.getElementById('cfg-game');
+          if (data.game_path && Array.from(gameSel.options).some(o => o.value === data.game_path)) {
+        gameSel.value = data.game_path;
+      }
+    }
+
+    if (data.costs) {
+      const c = data.costs;
+      const el = document.getElementById('cost-display');
+      el.textContent = `Cost: $${c.total_cost.toFixed(6)}`;
+      el.style.color = c.total_cost > 0.50 ? '#ff4444' : (c.total_cost > 0.10 ? '#ffaa00' : '#aaa');
+      document.getElementById('cost-rate').textContent = `($${c.hourly_rate.toFixed(2)}/hr)`;
+      document.getElementById('cost-model').textContent = c.model;
     }
   };
 
@@ -789,6 +1139,12 @@ function connectWS() {
 }
 
 connectWS();
+
+let useAiView = false;
+document.getElementById('res-check').addEventListener('change', () => {
+  useAiView = document.getElementById('res-check').checked;
+  document.getElementById('res-label').textContent = useAiView ? 'AI View' : '1:1';
+});
 </script>
 </body>
 </html>

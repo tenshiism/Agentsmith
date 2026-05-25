@@ -79,6 +79,8 @@ async def main():
                 brain.set_config(d.get("config", {}))
             elif d.get("type") == "set_status":
                 brain.set_status(d.get("status", "idle"))
+            elif d.get("type") == "change_game":
+                brain.change_game(d.get("rom_path", ""), d.get("game_name", ""))
         overlay.set_message_handler(_on_overlay_msg)
 
     try:

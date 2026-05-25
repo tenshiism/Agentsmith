@@ -34,6 +34,8 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+*package-lock.json
+*package.json
 
 # Env
 .env
@@ -73,3 +75,8 @@ roms/
 
 # Logs
 *.log
+/logs
+
+/tests
+/docs
+/node*

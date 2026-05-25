@@ -6,8 +6,9 @@
     "observe_every_n_frames": 30
   },
   "agent": {
+    "model": "gemma-3-27b-it",
     "provider": "openrouter",
-    "model": "qwen/qwen3.6-plus:free",
+    "base_url": "http://localhost:5001/v1",
     "temperature": 0.8,
     "strategy": "aggressive",
     "max_history": 40
