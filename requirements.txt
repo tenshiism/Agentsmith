@@ -5,10 +5,8 @@ pyyaml>=6.0
 # LLM
 openai>=1.0
 anthropic>=0.30
-
-# Game adapters
-# pyboy       # optional — for Game Boy emulator
-# gym-retro   # optional — for retro emulator
+python-dotenv>=1.0
+requests>=2.31
 
 # Web/streaming
 aiohttp>=3.9
@@ -17,10 +15,8 @@ websockets>=12.0
 # Media
 Pillow>=10.0
 numpy>=1.24
+mss>=9.0
 
 # TTS
-pyttsx3>=2.90
-# edge-tts>=6.0  # optional — better TTS voices
-
-# OBS integration (optional)
-# obsws-python>=1.0
+edge-tts>=6.1
+pygame>=2.6

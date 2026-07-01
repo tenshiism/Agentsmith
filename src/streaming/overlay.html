@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AgentSmith Overlay</title>
+<link rel="stylesheet" href="/streaming/overlay.css">
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/",
+    "@pixiv/three-vrm": "https://cdn.jsdelivr.net/npm/@pixiv/three-vrm@3.5.4/lib/three-vrm.module.min.js",
+    "@pixiv/three-vrm-animation": "https://cdn.jsdelivr.net/npm/@pixiv/three-vrm-animation@3/lib/three-vrm-animation.module.min.js"
+  }
+}
+</script>
+</head>
+<body>
+<div id="overlay">
+  <div id="game-container">
+    <img id="game-screen" src="" alt="Game screen">
+    <div id="game-controls" style="
+      position: absolute; bottom: 6px; left: 6px; right: 6px;
+      background: rgba(0,0,0,0.7); border-radius: 4px;
+      padding: 4px 8px; font-size: 11px;
+      display: flex; align-items: center; gap: 10px;
+      z-index: 10;
+    ">
+      <label style="display:flex;align-items:center;gap:4px;cursor:pointer;">
+        <input type="checkbox" id="res-check" style="cursor:pointer;">
+        <span id="res-label" style="color:#aaa;">AI View</span>
+      </label>
+      <div style="display:flex;align-items:center;gap:4px;flex:1;">
+        <span style="color:#aaa;">VOL</span>
+        <input type="range" id="tts-volume" min="0" max="100" value="80"
+          style="flex:1;height:12px;cursor:pointer;accent-color:#ff6b35;">
+        <span id="tts-volume-label" style="color:#aaa;min-width:28px;text-align:right;">80%</span>
+      </div>
+    </div>
+  </div>
+
+  <div id="right-panel">
+    <div id="info-panel">
+      <h1>AGENTSMITH</h1>
+      <div class="stat-grid">
+        <div class="stat-row">
+          <span class="stat-label">Action</span>
+          <span class="stat-value" id="last-action">-</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Strategy</span>
+          <button id="strat-prev" style="background:#222;color:#aaa;border:1px solid #444;border-radius:3px;width:18px;height:18px;cursor:pointer;font-size:10px;">&lt;</button>
+          <span id="strategy-name" style="font-size:11px;color:#ccc;">balanced</span>
+          <button id="strat-next" style="background:#222;color:#aaa;border:1px solid #444;border-radius:3px;width:18px;height:18px;cursor:pointer;font-size:10px;">&gt;</button>
+        </div>
+        <div class="stat-row" style="padding:2px 10px;">
+          <button id="char-prev" style="background:#222;color:#aaa;border:1px solid #444;border-radius:3px;width:18px;height:18px;cursor:pointer;font-size:10px;">&lt;</button>
+          <span id="char-label" style="font-size:11px;color:#ccc;">Neuro</span>
+          <button id="char-next" style="background:#222;color:#aaa;border:1px solid #444;border-radius:3px;width:18px;height:18px;cursor:pointer;font-size:10px;">&gt;</button>
+        </div>
+        <div class="stat-row mode-row" style="margin-top:4px;">
+          <span class="stat-label">Mode</span>
+          <select id="mode-select" class="mode-select">
+            <option value="direct">Direct</option>
+            <option value="tool-use">Tool-Use</option>
+          </select>
+        </div>
+        <div class="stat-row mode-row" style="margin-top:4px;">
+          <span class="stat-label">AI</span>
+          <button id="ai-toggle" class="ai-btn ai-idle">START</button>
+          <button id="ai-stop" class="ai-btn" style="background:#c62828;margin-left:6px;">STOP</button>
+          <button id="settings-toggle" class="ai-btn" style="background:#555;margin-left:6px;">SETTINGS</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:1000;justify-content:center;align-items:center;">
+      <div id="settings-dialog" style="background:#1a1a2e;border:2px solid #ff6b35;border-radius:8px;padding:20px;width:500px;min-width:360px;min-height:300px;max-height:90vh;overflow:auto;resize:both;">
+        <h2 style="font-family:'Press Start 2P',monospace;font-size:12px;color:#ff6b35;margin-bottom:16px;display:flex;align-items:center;gap:8px;">
+          AI SETTINGS
+          <span id="settings-expand" style="font-size:10px;color:#ff6b35;cursor:pointer;border:1px solid #ff6b35;border-radius:3px;padding:1px 7px;user-select:none;white-space:nowrap;margin-left:auto;">[+]</span>
+        </h2>
+
+        <!-- Action Model -->
+        <div style="border-bottom:1px solid rgba(255,107,53,0.15);margin-top:8px;">
+          <div class="cfg-section-toggle" style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;cursor:pointer;user-select:none;">
+            <h3 style="font-size:11px;color:#aaa;margin:0;text-transform:uppercase;">Action Model</h3>
+            <span class="cfg-arrow" style="font-size:10px;color:#888;">[+]</span>
+          </div>
+          <div class="cfg-section-body" style="display:none;padding-bottom:8px;">
+            <label style="font-size:11px;color:#888;">Provider</label>
+            <select id="cfg-action-provider" class="mode-select" style="width:100%;margin-bottom:6px;padding:4px 8px;">
+              <option value="openrouter">OpenRouter</option>
+              <option value="openai">OpenAI</option>
+              <option value="kobold">Kobold (Local)</option>
+              <option value="__custom__">Custom URL...</option>
+            </select>
+            <input id="cfg-action-url-custom" class="mode-select" style="width:100%;margin-bottom:6px;padding:4px 8px;display:none;" placeholder="Enter base URL...">
+            <label style="font-size:11px;color:#888;">Model</label>
+            <div id="cfg-action-model-btn" class="mode-select" style="width:100%;margin-bottom:6px;padding:4px 8px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;">
+              <span id="cfg-action-model-label">---</span>
+              <span style="font-size:9px;color:#888;">&#9662;</span>
+            </div>
+            <input id="cfg-action-model" type="hidden" value="">
+            <label style="font-size:10px;color:#666;display:flex;align-items:center;gap:4px;margin-bottom:6px;cursor:pointer;">
+              <input id="cfg-show-all-models" type="checkbox" style="margin:0;"> Display large list
+            </label>
+            <div style="display:flex;gap:8px;margin-top:4px;">
+              <div style="flex:1;">
+                <label style="font-size:11px;color:#888;">Temperature</label>
+                <input id="cfg-action-temp" class="mode-select" style="width:100%;padding:4px 8px;" type="number" step="0.05" min="0" max="2" value="0.7">
+              </div>
+              <div style="flex:1;">
+                <label style="font-size:11px;color:#888;">Max Tokens</label>
+                <input id="cfg-action-maxtokens" class="mode-select" style="width:100%;padding:4px 8px;" type="number" step="1" min="1" max="1024" value="16">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Commentary Model -->
+        <div style="border-bottom:1px solid rgba(255,107,53,0.15);">
+          <div class="cfg-section-toggle" style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;cursor:pointer;user-select:none;">
+            <h3 style="font-size:11px;color:#aaa;margin:0;text-transform:uppercase;">Commentary Model</h3>
+            <span class="cfg-arrow" style="font-size:10px;color:#888;">[+]</span>
+          </div>
+          <div class="cfg-section-body" style="display:none;padding-bottom:8px;">
+            <label style="font-size:11px;color:#888;">Provider</label>
+            <select id="cfg-comm-provider" class="mode-select" style="width:100%;margin-bottom:6px;padding:4px 8px;">
+              <option value="openrouter">OpenRouter</option>
+              <option value="openai">OpenAI</option>
+              <option value="kobold">Kobold (Local)</option>
+              <option value="__custom__">Custom URL...</option>
+            </select>
+            <input id="cfg-comm-url-custom" class="mode-select" style="width:100%;margin-bottom:6px;padding:4px 8px;display:none;" placeholder="Enter base URL...">
+            <label style="font-size:11px;color:#888;">Model</label>
+            <div id="cfg-comm-model-btn" class="mode-select" style="width:100%;margin-bottom:6px;padding:4px 8px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;">
+              <span id="cfg-comm-model-label">---</span>
+              <span style="font-size:9px;color:#888;">&#9662;</span>
+            </div>
+            <input id="cfg-comm-model" type="hidden" value="">
+            <div style="display:flex;gap:8px;margin-top:4px;">
+              <div style="flex:1;">
+                <label style="font-size:11px;color:#888;">Temperature</label>
+                <input id="cfg-comm-temp" class="mode-select" style="width:100%;padding:4px 8px;" type="number" step="0.05" min="0" max="2" value="0.9">
+              </div>
+              <div style="flex:1;">
+                <label style="font-size:11px;color:#888;">Max Tokens</label>
+                <input id="cfg-comm-maxtokens" class="mode-select" style="width:100%;padding:4px 8px;" type="number" step="1" min="1" max="500" value="120">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Game -->
+        <div style="border-bottom:1px solid rgba(255,107,53,0.15);">
+          <div class="cfg-section-toggle" style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;cursor:pointer;user-select:none;">
+            <h3 style="font-size:11px;color:#aaa;margin:0;text-transform:uppercase;">Game</h3>
+            <span class="cfg-arrow" style="font-size:10px;color:#888;">[+]</span>
+          </div>
+          <div class="cfg-section-body" style="display:none;padding-bottom:8px;">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+              <button id="console-prev" style="background:#222;color:#aaa;border:1px solid #444;border-radius:4px;width:24px;height:24px;cursor:pointer;font-size:12px;">&lt;</button>
+              <span id="console-label" style="flex:1;text-align:center;font-size:12px;color:#ccc;">All</span>
+              <button id="console-next" style="background:#222;color:#aaa;border:1px solid #444;border-radius:4px;width:24px;height:24px;cursor:pointer;font-size:12px;">&gt;</button>
+            </div>
+            <select id="cfg-game" class="mode-select" style="width:100%;padding:4px 8px;">
+              <option value="">-- Loading games... --</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Avatar -->
+        <div style="border-bottom:1px solid rgba(255,107,53,0.15);">
+          <div class="cfg-section-toggle" style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;cursor:pointer;user-select:none;">
+            <h3 style="font-size:11px;color:#aaa;margin:0;text-transform:uppercase;">Avatar</h3>
+            <span class="cfg-arrow" style="font-size:10px;color:#888;">[+]</span>
+          </div>
+          <div class="cfg-section-body" style="display:none;padding-bottom:8px;">
+            <label style="font-size:11px;color:#888;">VTuber Model</label>
+            <select id="cfg-vtuber-model" class="mode-select" style="width:100%;padding:4px 8px;margin-bottom:8px;"></select>
+            <label style="font-size:11px;color:#888;display:flex;align-items:center;gap:4px;margin-bottom:6px;">
+              <input id="cfg-eye-tracking" type="checkbox" checked> Eye Tracking
+            </label>
+            <label style="font-size:11px;color:#888;">Eye Interval (s)</label>
+            <input id="cfg-eye-interval" class="mode-select" style="width:100%;padding:4px 8px;margin-bottom:8px;" type="number" step="0.5" min="0.5" max="10" value="2.0">
+            <label style="font-size:11px;color:#888;">Lip Sync Mode</label>
+            <select id="cfg-lip-sync" class="mode-select" style="width:100%;padding:4px 8px;margin-bottom:6px;">
+              <option value="sine">Sine Wave</option>
+              <option value="audio">Audio Amplitude</option>
+              <option value="disabled">Disabled</option>
+            </select>
+            <div style="display:flex;gap:8px;">
+              <div style="flex:1;">
+                <label style="font-size:11px;color:#888;">Blink Interval (s)</label>
+                <input id="cfg-blink-interval" class="mode-select" style="width:100%;padding:4px 8px;margin-bottom:6px;" type="number" step="0.5" min="1" max="10" value="3.5">
+              </div>
+              <div style="flex:1;">
+                <label style="font-size:11px;color:#888;">Eye Range</label>
+                <input id="cfg-eye-range" class="mode-select" style="width:100%;padding:4px 8px;margin-bottom:6px;" type="number" step="0.05" min="0" max="1" value="0.4">
+              </div>
+            </div>
+            <label style="font-size:11px;color:#888;display:flex;align-items:center;gap:4px;margin-bottom:6px;">
+              <input id="cfg-idle-sway" type="checkbox" checked> Idle Sway
+            </label>
+            <label style="font-size:11px;color:#888;">Sway Strength</label>
+            <input id="cfg-sway-strength" class="mode-select" style="width:100%;padding:4px 8px;margin-bottom:6px;" type="number" step="0.001" min="0" max="0.02" value="0.003">
+            <label style="font-size:11px;color:#888;display:flex;align-items:center;gap:4px;margin-bottom:6px;">
+              <input id="cfg-mood-expressions" type="checkbox" checked> Mood Expressions
+            </label>
+            <button id="cfg-avatar-reset" class="ai-btn" style="background:#555;width:100%;margin-top:4px;">RESET POSITION</button>
+            <div style="font-size:9px;color:#666;margin-top:4px;">Scroll = zoom, drag = pan</div>
+          </div>
+        </div>
+
+        <!-- Behavior -->
+        <div style="border-bottom:1px solid rgba(255,107,53,0.15);">
+          <div class="cfg-section-toggle" style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;cursor:pointer;user-select:none;">
+            <h3 style="font-size:11px;color:#aaa;margin:0;text-transform:uppercase;">Behavior</h3>
+            <span class="cfg-arrow" style="font-size:10px;color:#888;">[+]</span>
+          </div>
+          <div class="cfg-section-body" style="display:none;padding-bottom:8px;">
+            <div style="display:flex;gap:8px;">
+              <div style="flex:1;">
+                <label style="font-size:11px;color:#888;">Strategy</label>
+                <select id="cfg-strategy" class="mode-select" style="width:100%;padding:4px 8px;">
+                  <option value="balanced">Balanced</option>
+                  <option value="aggressive">Aggressive</option>
+                  <option value="cautious">Cautious</option>
+                  <option value="explorer">Explorer</option>
+                </select>
+              </div>
+              <div style="flex:1;">
+                <label style="font-size:11px;color:#888;">Personality</label>
+                <select id="cfg-personality" class="mode-select" style="width:100%;padding:4px 8px;">
+                  <option value="energetic">Energetic</option>
+                  <option value="chill">Chill</option>
+                  <option value="sarcastic">Sarcastic</option>
+                  <option value="lore_keeper">Lore Keeper</option>
+                  <option value="neuro">Neuro</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Toggles -->
+        <div style="border-bottom:1px solid rgba(255,107,53,0.15);">
+          <div class="cfg-section-toggle" style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;cursor:pointer;user-select:none;">
+            <h3 style="font-size:11px;color:#aaa;margin:0;text-transform:uppercase;">Toggles</h3>
+            <span class="cfg-arrow" style="font-size:10px;color:#888;">[+]</span>
+          </div>
+          <div class="cfg-section-body" style="display:none;padding-bottom:8px;">
+            <div style="display:flex;gap:12px;margin-top:8px;flex-wrap:wrap;">
+              <label style="font-size:11px;color:#888;display:flex;align-items:center;gap:4px;">
+                <input id="cfg-action-enabled" type="checkbox" checked> Action Model
+              </label>
+              <label style="font-size:11px;color:#888;display:flex;align-items:center;gap:4px;">
+                <input id="cfg-commentary-enabled" type="checkbox" checked> Commentary Model
+              </label>
+              <label style="font-size:11px;color:#888;display:flex;align-items:center;gap:4px;">
+                <input id="cfg-tts-enabled" type="checkbox"> TTS Enabled
+              </label>
+              <label style="font-size:11px;color:#888;display:flex;align-items:center;gap:4px;">
+                <input id="cfg-commentary-context" type="checkbox"> Commentary Context
+              </label>
+              <label style="font-size:11px;color:#888;display:flex;align-items:center;gap:4px;">
+                <input id="cfg-shared-cooldown" type="checkbox"> Shared Cooldown
+              </label>
+              <label style="font-size:11px;color:#888;display:flex;align-items:center;gap:4px;">
+                <input id="cfg-screenshot-noise" type="checkbox"> Screenshot Noise
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Timing -->
+        <div style="border-bottom:1px solid rgba(255,107,53,0.15);">
+          <div class="cfg-section-toggle" style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;cursor:pointer;user-select:none;">
+            <h3 style="font-size:11px;color:#aaa;margin:0;text-transform:uppercase;">Timing</h3>
+            <span class="cfg-arrow" style="font-size:10px;color:#888;">[+]</span>
+          </div>
+          <div class="cfg-section-body" style="display:none;padding-bottom:8px;">
+            <div style="display:flex;gap:8px;">
+              <div style="flex:1;">
+                <label style="font-size:11px;color:#888;">Action Interval (s)</label>
+                <input id="cfg-action-interval" class="mode-select" style="width:100%;padding:4px 8px;" type="number" step="0.5" value="12.0">
+              </div>
+              <div style="flex:1;">
+                <label style="font-size:11px;color:#888;">Comm Interval (s)</label>
+                <input id="cfg-comm-interval" class="mode-select" style="width:100%;padding:4px 8px;" type="number" step="0.5" value="30.0">
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:6px;">
+              <div style="flex:1;">
+                <label style="font-size:11px;color:#888;">Retry Base (s)</label>
+                <input id="cfg-retry-base" class="mode-select" style="width:100%;padding:4px 8px;" type="number" step="0.5" value="2.0">
+              </div>
+              <div style="flex:1;">
+                <label style="font-size:11px;color:#888;">Retry Max (s)</label>
+                <input id="cfg-retry-max" class="mode-select" style="width:100%;padding:4px 8px;" type="number" step="0.5" value="30.0">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-top:16px;">
+          <button id="settings-save" class="ai-btn" style="background:#2e7d32;flex:1;">SAVE</button>
+          <button id="settings-close" class="ai-btn" style="background:#555;flex:1;">CLOSE</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Avatar Panel Controls -->
+    <div id="avatar-panel" style="
+      background: rgba(10,10,30,0.85);
+      border: 1px solid rgba(255,107,53,0.3);
+      border-radius: 6px;
+      margin-top: 6px;
+      padding: 6px 10px;
+    ">
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+        <button id="av-reset-cam" class="ai-btn" style="background:#555;font-size:10px;padding:3px 10px;">RESET CAM</button>
+        <button id="av-freeze" class="ai-btn ai-idle" style="font-size:10px;padding:3px 10px;">FREEZE</button>
+        <button id="av-speak-now" class="ai-btn" style="background:#2e7d32;font-size:10px;padding:3px 10px;">SPEAK NOW</button>
+        <span style="font-size:10px;color:#888;">Mood:</span>
+        <span id="av-mood" style="font-size:10px;color:#ccc;">-</span>
+        <span style="font-size:10px;color:#888;">Eyes:</span>
+        <span id="av-eye-status" style="font-size:10px;color:#4caf50;cursor:pointer;text-decoration:underline;text-decoration-color:rgba(255,107,53,0.3);">ON</span>
+      </div>
+    </div>
+
+    <!-- Animations Panel (VRMA) -->
+    <div id="anim-panel" style="
+      background: rgba(10,10,30,0.85);
+      border: 1px solid rgba(255,107,53,0.3);
+      border-radius: 6px;
+      margin-top: 6px;
+    ">
+      <div id="anim-toggle" style="
+        display:flex;align-items:center;justify-content:space-between;
+        padding:4px 10px;cursor:pointer;user-select:none;
+      ">
+        <span style="font-family:'Press Start 2P',monospace;font-size:8px;color:#ff6b35;">ANIMATIONS</span>
+        <span id="anim-arrow" style="font-size:10px;color:#888;">[+]</span>
+      </div>
+      <div id="anim-body" style="display:none;padding:6px 10px 8px;">
+        <div id="anim-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;">
+          <button class="anim-btn" data-index="0">Angry</button>
+          <button class="anim-btn" data-index="1">Blush</button>
+          <button class="anim-btn" data-index="2">Clapping</button>
+          <button class="anim-btn" data-index="3">Goodbye</button>
+          <button class="anim-btn" data-index="4">Jump</button>
+          <button class="anim-btn" data-index="5">Look</button>
+          <button class="anim-btn" data-index="6">Relax</button>
+          <button class="anim-btn" data-index="7">Sad</button>
+          <button class="anim-btn" data-index="8">Sleepy</button>
+          <button class="anim-btn" data-index="9">Surprised</button>
+          <button class="anim-btn" data-index="10">Think</button>
+        </div>
+        <div style="display:flex;gap:4px;margin-top:6px;">
+          <button id="anim-play" class="ai-btn" style="background:#2e7d32;flex:1;font-size:10px;padding:3px;">PLAY</button>
+          <button id="anim-stop" class="ai-btn" style="background:#c62828;flex:1;font-size:10px;padding:3px;">STOP</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Test Panel -->
+    <div id="test-panel" style="
+      background: rgba(10,10,30,0.85);
+      border: 1px solid rgba(255,107,53,0.3);
+      border-radius: 6px;
+      margin-top: 6px;
+    ">
+      <div id="test-toggle" style="
+        display:flex;align-items:center;justify-content:space-between;
+        padding:4px 10px;cursor:pointer;user-select:none;
+      ">
+        <span style="font-family:'Press Start 2P',monospace;font-size:8px;color:#ff6b35;">TEST CONTROLS</span>
+        <span id="test-arrow" style="font-size:10px;color:#888;">[+]</span>
+      </div>
+      <div id="test-body" style="display:none;padding:6px 10px 8px;">
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;">
+          <button class="test-btn" data-key="up" style="background:#222;color:#aaa;border:1px solid #444;border-radius:3px;padding:6px 0;cursor:pointer;font-size:11px;">Up</button>
+          <button class="test-btn" data-key="down" style="background:#222;color:#aaa;border:1px solid #444;border-radius:3px;padding:6px 0;cursor:pointer;font-size:11px;">Down</button>
+          <button class="test-btn" data-key="left" style="background:#222;color:#aaa;border:1px solid #444;border-radius:3px;padding:6px 0;cursor:pointer;font-size:11px;">Left</button>
+          <button class="test-btn" data-key="right" style="background:#222;color:#aaa;border:1px solid #444;border-radius:3px;padding:6px 0;cursor:pointer;font-size:11px;">Right</button>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:4px;">
+          <button class="test-btn" data-key="a" style="background:#222;color:#aaa;border:1px solid #444;border-radius:3px;padding:6px 0;cursor:pointer;font-size:11px;">A</button>
+          <button class="test-btn" data-key="b" style="background:#222;color:#aaa;border:1px solid #444;border-radius:3px;padding:6px 0;cursor:pointer;font-size:11px;">B</button>
+          <button class="test-btn" data-key="start" style="background:#222;color:#aaa;border:1px solid #444;border-radius:3px;padding:6px 0;cursor:pointer;font-size:11px;">Start</button>
+          <button class="test-btn" data-key="select" style="background:#222;color:#aaa;border:1px solid #444;border-radius:3px;padding:6px 0;cursor:pointer;font-size:11px;">Select</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="avatar-container">
+      <div id="avatar-loading">LOADING AVATAR...</div>
+      <div id="avatar-debug" style="position:absolute;top:4px;left:4px;font-size:9px;color:#ff6b35;z-index:11;pointer-events:none;font-family:monospace;"></div>
+      <canvas id="avatar-canvas"></canvas>
+    </div>
+  </div>
+
+  <div id="commentary-bar">
+    <span class="vtuber-indicator idle" id="vtuber-indicator"></span>
+    <span class="label">LIVE</span>
+    <span class="text" id="commentary-text">-</span>
+  </div>
+
+  <div id="bottom-bar">
+    <div class="segment">
+      <span class="dot active" id="status-dot"></span>
+      <span id="status-text">Running</span>
+    </div>
+    <div class="segment">
+      <span>Model:</span>
+      <span id="model-name">-</span>
+    </div>
+    <div class="segment">
+      <span>FPS:</span>
+      <span id="fps-display">-</span>
+    </div>
+    <div class="segment">
+      <span>VTuber:</span>
+      <span id="vtuber-name" style="color:#ff6b35;">-</span>
+    </div>
+    <div class="strategy" id="strategy-display">STRATEGY: -</div>
+  </div>
+</div>
+
+<div id="cost-bar" style="
+  position: fixed; bottom: 0; left: 0; right: 0;
+  height: 24px; background: rgba(0,0,0,0.8);
+  color: #aaa; font-size: 12px; font-family: monospace;
+  display: flex; align-items: center; padding: 0 12px;
+  z-index: 1000;
+">
+  <span id="cost-display">Cost: $0.000000</span>
+  <span style="margin-left: 16px;" id="cost-rate">($0.00/hr)</span>
+  <span style="margin-left: auto;" id="cost-model"></span>
+</div>
+
+<script src="/streaming/overlay-ui.js"></script>
+<script>
+window.addEventListener('error', (e) => {
+  var el = document.getElementById('avatar-loading');
+  if (el) { el.textContent = 'JS ERROR: ' + e.message; el.style.color = '#f44'; el.style.display = 'block'; el.style.fontSize = '10px'; el.style.whiteSpace = 'pre-wrap'; el.style.padding = '10px'; }
+});
+window.addEventListener('unhandledrejection', (e) => {
+  var el = document.getElementById('avatar-loading');
+  if (el) { el.textContent = 'PROMISE ERROR: ' + e.reason; el.style.color = '#f44'; el.style.display = 'block'; el.style.fontSize = '10px'; el.style.whiteSpace = 'pre-wrap'; el.style.padding = '10px'; }
+});
+</script>
+<script type="module" src="/streaming/overlay.js"></script>
+</body>
+</html>

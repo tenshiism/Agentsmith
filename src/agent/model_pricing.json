@@ -1,0 +1,171 @@
+{
+  "pricing": {
+    "google/gemma-4-26b-a4b-it:free":             {"prompt": 0, "completion": 0, "image": 0},
+    "google/gemma-4-31b-it:free":                  {"prompt": 0, "completion": 0, "image": 0},
+    "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free": {"prompt": 0, "completion": 0, "image": 0},
+    "nvidia/nemotron-nano-12b-v2-vl:free":         {"prompt": 0, "completion": 0, "image": 0},
+    "openrouter/free":                              {"prompt": 0, "completion": 0, "image": 0},
+    "google/gemma-3-4b-it":                        {"prompt": 4e-8, "completion": 8e-8, "image": 3.4e-6},
+    "google/gemma-3-12b-it":                       {"prompt": 4e-8, "completion": 1.3e-7, "image": 3.4e-6},
+    "google/gemma-3-27b-it":                       {"prompt": 8e-8, "completion": 1.6e-7, "image": 3.4e-6},
+    "google/gemma-4-26b-a4b-it":                   {"prompt": 6e-8, "completion": 3.3e-7, "image": 3.4e-6},
+    "google/gemma-4-31b-it":                       {"prompt": 1.2e-7, "completion": 3.5e-7, "image": 3.4e-6},
+    "google/gemini-2.5-flash-lite":                {"prompt": 7.5e-8, "completion": 3e-7, "image": 6.4e-6},
+    "google/gemini-2.5-flash":                     {"prompt": 1.5e-7, "completion": 6e-7, "image": 1.28e-5},
+    "google/gemini-2.5-pro":                       {"prompt": 1.25e-6, "completion": 1e-5, "image": 0},
+    "google/gemini-3-flash-preview":               {"prompt": 5e-7, "completion": 3e-6, "image": 1.28e-5},
+    "google/gemini-3.1-flash-lite":                {"prompt": 2.5e-7, "completion": 1.5e-6, "image": 6.4e-6},
+    "google/gemini-3.1-pro-preview":               {"prompt": 2e-6, "completion": 1.2e-5, "image": 0},
+    "google/gemini-2.0-flash-001":                 {"prompt": 1e-7, "completion": 4e-7, "image": 8.5e-6},
+    "google/gemini-2.0-flash-lite-001":            {"prompt": 7.5e-8, "completion": 3e-7, "image": 6.4e-6},
+    "google/gemini-2.5-flash-001":                 {"prompt": 1.5e-7, "completion": 6e-7, "image": 1.28e-5},
+    "openai/gpt-4o-mini":                          {"prompt": 1.5e-7, "completion": 6e-7, "image": 1.28e-5},
+    "openai/gpt-4o":                               {"prompt": 2.5e-6, "completion": 1e-5, "image": 2.13e-4},
+    "openai/gpt-4.1-nano":                         {"prompt": 1e-7, "completion": 4e-7, "image": 8.5e-6},
+    "openai/gpt-4.1-mini":                         {"prompt": 4e-7, "completion": 1.6e-6, "image": 1.7e-4},
+    "openai/gpt-4.1":                              {"prompt": 2e-6, "completion": 8e-6, "image": 1.7e-4},
+    "openai/gpt-5-nano":                           {"prompt": 5e-8, "completion": 4e-7},
+    "openai/gpt-5-mini":                           {"prompt": 2.5e-7, "completion": 2e-6},
+    "openai/gpt-5":                                {"prompt": 1.25e-6, "completion": 1e-5},
+    "openai/gpt-5.1":                              {"prompt": 1.25e-6, "completion": 1e-5},
+    "openai/gpt-5.4":                              {"prompt": 2.5e-6, "completion": 1.5e-5},
+    "openai/gpt-5.5":                              {"prompt": 5e-6, "completion": 3e-5},
+    "openai/o4-mini":                              {"prompt": 1.1e-6, "completion": 4.4e-6},
+    "openai/o3":                                   {"prompt": 2e-6, "completion": 8e-6},
+    "anthropic/claude-3-haiku":                    {"prompt": 2.5e-7, "completion": 1.25e-6},
+    "anthropic/claude-haiku-4.5":                  {"prompt": 1e-6, "completion": 5e-6},
+    "anthropic/claude-sonnet-4":                   {"prompt": 3e-6, "completion": 1.5e-5},
+    "anthropic/claude-opus-4.5":                   {"prompt": 5e-6, "completion": 2.5e-5},
+    "anthropic/claude-opus-4":                     {"prompt": 1.5e-5, "completion": 7.5e-5},
+    "meta-llama/llama-4-scout":                    {"prompt": 8e-8, "completion": 3e-7},
+    "meta-llama/llama-4-maverick":                 {"prompt": 1.5e-7, "completion": 6e-7},
+    "mistralai/mistral-small-3.2-24b-instruct":   {"prompt": 7.5e-8, "completion": 2e-7},
+    "mistralai/ministral-3b-2512":                 {"prompt": 1e-7, "completion": 1e-7},
+    "mistralai/ministral-8b-2512":                 {"prompt": 1.5e-7, "completion": 1.5e-7},
+    "mistralai/ministral-14b-2512":                {"prompt": 2e-7, "completion": 2e-7},
+    "mistralai/mistral-large-2512":                {"prompt": 5e-7, "completion": 1.5e-6},
+    "mistralai/mistral-medium-3":                  {"prompt": 4e-7, "completion": 2e-6},
+    "qwen/qwen3-vl-8b-instruct":                  {"prompt": 8e-8, "completion": 5e-7},
+    "qwen/qwen3.5-flash-02-23":                   {"prompt": 6.5e-8, "completion": 2.6e-7, "image": 5.5e-6},
+    "qwen/qwen3-vl-32b-instruct":                 {"prompt": 1e-7, "completion": 4.2e-7},
+    "qwen/qwen3.7-plus":                           {"prompt": 3.2e-7, "completion": 1.28e-6},
+    "qwen/qwen2.5-vl-72b-instruct":               {"prompt": 8e-7, "completion": 1e-6},
+    "qwen/qwen3.5-9b":                             {"prompt": 4e-8, "completion": 1.5e-7, "image": 3.4e-6},
+    "x-ai/grok-4.3":                               {"prompt": 1.25e-6, "completion": 2.5e-6},
+    "x-ai/grok-4.20":                              {"prompt": 1.25e-6, "completion": 2.5e-6},
+    "amazon/nova-lite-v1":                         {"prompt": 6e-8, "completion": 2.4e-7},
+    "amazon/nova-pro-v1":                          {"prompt": 8e-7, "completion": 3.2e-6},
+    "amazon/nova-2-lite-v1":                       {"prompt": 3e-7, "completion": 2.5e-6}
+  },
+  "categories_top": {
+    "openrouter": {
+      "Free": [
+        "google/gemma-4-26b-a4b-it:free",
+        "google/gemma-4-31b-it:free",
+        "nvidia/nemotron-nano-12b-v2-vl:free"
+      ],
+      "Budget": [
+        "google/gemma-3-4b-it",
+        "google/gemma-3-12b-it",
+        "google/gemini-2.5-flash-lite",
+        "openai/gpt-5-nano",
+        "openai/gpt-4.1-nano"
+      ],
+      "Balanced": [
+        "google/gemini-2.5-flash",
+        "openai/gpt-5-mini",
+        "openai/gpt-4.1-mini",
+        "meta-llama/llama-4-scout"
+      ],
+      "Smart": [
+        "google/gemini-2.5-pro",
+        "openai/gpt-5",
+        "anthropic/claude-sonnet-4"
+      ]
+    },
+    "openai": {
+      "Models": ["gpt-5", "gpt-5-mini", "gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano"]
+    },
+    "kobold": {}
+  },
+  "categories_all": {
+    "openrouter": {
+      "Free": [
+        "google/gemma-4-26b-a4b-it:free",
+        "google/gemma-4-31b-it:free",
+        "nvidia/nemotron-nano-12b-v2-vl:free"
+      ],
+      "Google": [
+        "google/gemma-3-4b-it",
+        "google/gemma-3-12b-it",
+        "google/gemma-3-27b-it",
+        "google/gemma-4-26b-a4b-it",
+        "google/gemma-4-31b-it",
+        "google/gemini-2.5-flash-lite",
+        "google/gemini-2.5-flash",
+        "google/gemini-2.5-pro",
+        "google/gemini-3-flash-preview",
+        "google/gemini-3.1-flash-lite",
+        "google/gemini-3.1-pro-preview"
+      ],
+      "OpenAI": [
+        "openai/gpt-4o-mini",
+        "openai/gpt-4o",
+        "openai/gpt-4.1-nano",
+        "openai/gpt-4.1-mini",
+        "openai/gpt-4.1",
+        "openai/gpt-5-nano",
+        "openai/gpt-5-mini",
+        "openai/gpt-5",
+        "openai/gpt-5.1",
+        "openai/gpt-5.4",
+        "openai/gpt-5.5",
+        "openai/o4-mini",
+        "openai/o3"
+      ],
+      "Anthropic": [
+        "anthropic/claude-3-haiku",
+        "anthropic/claude-haiku-4.5",
+        "anthropic/claude-sonnet-4",
+        "anthropic/claude-opus-4.5",
+        "anthropic/claude-opus-4"
+      ],
+      "Meta": [
+        "meta-llama/llama-4-scout",
+        "meta-llama/llama-4-maverick"
+      ],
+      "Mistral": [
+        "mistralai/mistral-small-3.2-24b-instruct",
+        "mistralai/ministral-3b-2512",
+        "mistralai/ministral-8b-2512",
+        "mistralai/ministral-14b-2512",
+        "mistralai/mistral-large-2512",
+        "mistralai/mistral-medium-3"
+      ],
+      "Qwen": [
+        "qwen/qwen3-vl-8b-instruct",
+        "qwen/qwen3.5-flash-02-23",
+        "qwen/qwen3-vl-32b-instruct",
+        "qwen/qwen3.7-plus",
+        "qwen/qwen2.5-vl-72b-instruct"
+      ],
+      "xAI": [
+        "x-ai/grok-4.3",
+        "x-ai/grok-4.20"
+      ],
+      "Amazon": [
+        "amazon/nova-lite-v1",
+        "amazon/nova-pro-v1",
+        "amazon/nova-2-lite-v1"
+      ]
+    },
+    "openai": {
+      "Models": [
+        "gpt-4o-mini", "gpt-4o", "gpt-4.1-nano", "gpt-4.1-mini", "gpt-4.1",
+        "gpt-5-nano", "gpt-5-mini", "gpt-5", "gpt-5.1", "gpt-5.4", "gpt-5.5",
+        "o4-mini", "o3"
+      ]
+    },
+    "kobold": {}
+  }
+}

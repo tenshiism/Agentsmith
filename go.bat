@@ -1,0 +1,1 @@
+start "AgentSmith" cmd.exe /k "cd /d %~dp0 & call .venv\Scripts\activate.bat & python src\main.py --config configs\default.json"

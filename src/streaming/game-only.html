@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AgentSmith Game View</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100%; height: 100%; overflow: hidden; background: transparent; }
+img { display: block; width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; }
+</style>
+</head>
+<body>
+<img id="game-screen" src="" alt="">
+<script>
+let ws = null, reconnectDelay = 1000;
+function connect() {
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  ws = new WebSocket(proto + '//' + location.host + '/ws');
+  ws.onmessage = (e) => {
+    try {
+      const data = JSON.parse(e.data);
+      const src = data.screenshot_full || data.screenshot;
+      if (src) document.getElementById('game-screen').src = 'data:image/jpeg;base64,' + src;
+    } catch(_) {}
+  };
+  ws.onclose = () => { setTimeout(connect, reconnectDelay); reconnectDelay = Math.min(reconnectDelay * 1.5, 30000); };
+  ws.onopen = () => { reconnectDelay = 1000; };
+}
+connect();
+</script>
+</body>
+</html>

@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AgentSmith Avatar</title>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/",
+    "@pixiv/three-vrm": "https://cdn.jsdelivr.net/npm/@pixiv/three-vrm@3.5.4/lib/three-vrm.module.min.js",
+    "@pixiv/three-vrm-animation": "https://cdn.jsdelivr.net/npm/@pixiv/three-vrm-animation@3/lib/three-vrm-animation.module.min.js"
+  }
+}
+</script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: transparent !important;
+}
+body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+#loading {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: rgba(255,255,255,0.5);
+  font-family: monospace;
+  font-size: 12px;
+  z-index: 5;
+  pointer-events: none;
+  display: none;
+}
+</style>
+</head>
+<body>
+<div id="loading">LOADING...</div>
+<canvas id="avatar-canvas"></canvas>
+
+<script>
+// Catch errors even before module loads
+window.addEventListener('error', (e) => {
+  const el = document.getElementById('loading');
+  if (el) {
+    el.textContent = 'ERR: ' + (e.message || e.error || e);
+    el.style.color = '#f44';
+    el.style.display = 'block';
+    el.style.fontSize = '10px';
+    el.style.whiteSpace = 'pre-wrap';
+  }
+});
+// Check WebGL support
+(function() {
+  var c = document.createElement('canvas');
+  var gl = c.getContext('webgl2') || c.getContext('webgl');
+  if (!gl) {
+    var el = document.getElementById('loading');
+    if (el) {
+      el.textContent = 'NO WebGL support in this browser';
+      el.style.color = '#f44';
+      el.style.display = 'block';
+      el.style.fontSize = '12px';
+    }
+  }
+})();
+</script>
+<noscript><div id="nojs" style="position:absolute;top:50%;left:50%;color:#f44;font-family:monospace;transform:translate(-50%,-50%);">JavaScript required</div></noscript>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
+import { VRMAnimationLoaderPlugin, createVRMAnimationClip } from '@pixiv/three-vrm-animation';
+
+const MODELS = [
+  { name: 'Seed-san',          file: '/assets/models/Seed-san.vrm' },
+  { name: 'Alicia Solid',      file: '/assets/models/AliciaSolid_vrm-0.51.vrm' },
+  { name: 'Avatar Orion',      file: '/assets/models/Avatar_Orion.vrm' },
+  { name: 'ExampleAvatar A',   file: '/assets/models/ExampleAvatar_A.vrm' },
+  { name: 'ExampleAvatar C',   file: '/assets/models/ExampleAvatar_C.vrm' },
+];
+
+const VRMA_FILES = [
+  { name: 'Angry',      file: '/assets/vrma/Angry.vrma' },
+  { name: 'Blush',      file: '/assets/vrma/Blush.vrma' },
+  { name: 'Clapping',   file: '/assets/vrma/Clapping.vrma' },
+  { name: 'Goodbye',    file: '/assets/vrma/Goodbye.vrma' },
+  { name: 'Jump',       file: '/assets/vrma/Jump.vrma' },
+  { name: 'LookAround', file: '/assets/vrma/LookAround.vrma' },
+  { name: 'Relax',      file: '/assets/vrma/Relax.vrma' },
+  { name: 'Sad',        file: '/assets/vrma/Sad.vrma' },
+  { name: 'Sleepy',     file: '/assets/vrma/Sleepy.vrma' },
+  { name: 'Surprised',  file: '/assets/vrma/Surprised.vrma' },
+  { name: 'Thinking',   file: '/assets/vrma/Thinking.vrma' },
+];
+
+let currentModelIdx = 0;
+let vrm = null;
+let vrmCenter = new THREE.Vector3(0, 0.9, 0);
+let clock = new THREE.Clock();
+let renderer, scene, camera, controls;
+
+// VRMA state
+let currentMixer = null;
+let currentAction = null;
+let vrmaAnimationClip = null;
+let currentVrmaIndex = -1;
+
+function createVrmLoader() {
+  const l = new GLTFLoader();
+  l.crossOrigin = 'anonymous';
+  l.register((parser) => new VRMLoaderPlugin(parser));
+  l.register((parser) => new VRMAnimationLoaderPlugin(parser));
+  return l;
+}
+
+const canvas = document.getElementById('avatar-canvas');
+const loadingEl = document.getElementById('loading');
+
+const savedModel = localStorage.getItem('vtuber-model-idx');
+if (savedModel !== null) currentModelIdx = parseInt(savedModel, 10) || 0;
+
+// --- Scene setup ---
+function initScene() {
+  // OBS CEF might have 0-sized viewport on first load
+  const w = Math.max(window.innerWidth, 1);
+  const h = Math.max(window.innerHeight, 1);
+  renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, preserveDrawingBuffer: true });
+  renderer.setSize(w, h);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setClearColor(0x000000, 0);
+
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(28, w / h, 0.1, 20);
+  camera.position.set(0, 1.1, 2.8);
+  camera.lookAt(0, 0.9, 0);
+
+  scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+  const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+  dirLight.position.set(1.5, 2.0, 1.5);
+  scene.add(dirLight);
+  const fillLight = new THREE.DirectionalLight(0x8888ff, 0.4);
+  fillLight.position.set(-1.0, 0.5, 1.0);
+  scene.add(fillLight);
+  const rimLight = new THREE.DirectionalLight(0xff8844, 0.3);
+  rimLight.position.set(0, 1.5, -2.0);
+  scene.add(rimLight);
+
+  controls = new OrbitControls(camera, canvas);
+  controls.target.set(0, 0.9, 0);
+  controls.enablePan = true;
+  controls.enableZoom = true;
+  controls.enableRotate = true;
+  controls.rotateSpeed = 0.5;
+  controls.zoomSpeed = 0.8;
+  controls.update();
+}
+
+// --- VRM loading ---
+function loadVRM(idx) {
+  const model = MODELS[idx];
+  if (!model) return;
+  loadingEl.style.display = 'block';
+  loadingEl.textContent = 'LOADING ' + model.name + '...';
+
+  if (vrm) {
+    scene.remove(vrm.scene);
+    VRMUtils.deepDispose(vrm.scene);
+    vrm = null;
+  }
+
+  const loader = createVrmLoader();
+
+  loader.load(
+    model.file,
+    (gltf) => {
+      vrm = gltf.userData.vrm;
+      VRMUtils.removeUnnecessaryVertices(gltf.scene);
+      VRMUtils.combineSkeletons(gltf.scene);
+      VRMUtils.combineMorphs(vrm);
+      vrm.scene.traverse((obj) => { obj.frustumCulled = false; });
+      scene.add(vrm.scene);
+      VRMUtils.rotateVRM0(vrm);
+
+      const box = new THREE.Box3().setFromObject(vrm.scene);
+      const center = box.getCenter(new THREE.Vector3());
+      vrmCenter.copy(center);
+      const target = new THREE.Vector3(center.x, center.y, center.z);
+      controls.target.copy(target);
+
+      if (vrm.lookAt && vrm.lookAt.target) {
+        vrm.lookAt.target.copy(target);
+      }
+
+      loadingEl.style.display = 'none';
+      clock = new THREE.Clock();
+      window.dispatchEvent(new CustomEvent('avatar-loaded', { detail: { vrm } }));
+    },
+    undefined,
+    (err) => {
+      console.error('VRM load error:', err);
+      loadingEl.textContent = 'LOAD FAILED: ' + (err.message || err);
+      loadingEl.style.color = '#f44';
+    }
+  );
+}
+
+// --- Animation loop ---
+let blinkTimer = 0;
+let blinkInterval = 3.5 + Math.random() * 2;
+let isSpeaking = false;
+let audioAmplitude = 0;
+let mouthOpen = 0;
+const MOUTH_SPEED = 0.15;
+let lastMood = 'neutral';
+let moodWeight = 0;
+let eyeTargetX = 0;
+let eyeTargetY = 0.9;
+let lastEyeUpdate = 0;
+let eyeTrackingEnabled = true;
+let eyeTrackingInterval = 3;
+let frozen = false;
+let blinkIntervalSetting = 3.5;
+let eyeRange = 0.4;
+let idleSwayEnabled = true;
+let idleSwayStrength = 0.003;
+let moodExpressionsEnabled = true;
+let lipSyncMode = 'sine';
+
+function animate() {
+  requestAnimationFrame(animate);
+
+  if (frozen) {
+    if (renderer) renderer.render(scene, camera);
+    return;
+  }
+
+  const delta = clock ? clock.getDelta() : 0.016;
+  controls.update();
+
+  if (vrm) {
+    const elapsed = clock ? clock.getElapsedTime() : 0;
+
+    // Blink
+    blinkTimer += delta;
+    if (blinkTimer >= blinkIntervalSetting) {
+      blinkTimer = 0;
+      if (vrm.blendShapeProxy) {
+        vrm.blendShapeProxy.setValue('blink', 1);
+        setTimeout(() => {
+          if (vrm && vrm.blendShapeProxy) vrm.blendShapeProxy.setValue('blink', 0);
+        }, 100);
+      }
+    }
+
+    // Mouth (lip sync)
+    if (vrm.blendShapeProxy) {
+      let targetOpen = 0;
+      if (lipSyncMode === 'audio') {
+        targetOpen = isSpeaking ? 0.5 + audioAmplitude * 0.5 : 0;
+      } else if (lipSyncMode === 'sine') {
+        targetOpen = isSpeaking ? 0.3 + 0.3 * Math.sin(elapsed * 12) : Math.sin(elapsed * 3) * 0.02;
+      }
+      mouthOpen += (targetOpen - mouthOpen) * MOUTH_SPEED;
+      vrm.blendShapeProxy.setValue('aa', mouthOpen * 0.6);
+      vrm.blendShapeProxy.setValue('ih', mouthOpen * 0.3);
+      vrm.blendShapeProxy.setValue('oh', mouthOpen * 0.4);
+    }
+
+    // Eye tracking (idle movement)
+    if (eyeTrackingEnabled && vrm.lookAt && vrm.lookAt.target) {
+      if (elapsed - lastEyeUpdate > eyeTrackingInterval) {
+        eyeTargetX = (Math.random() - 0.5) * eyeRange;
+        eyeTargetY = 0.8 + Math.random() * 0.3;
+        lastEyeUpdate = elapsed;
+      }
+      const cur = vrm.lookAt.target;
+      cur.x += (eyeTargetX - cur.x) * 0.05;
+      cur.y += (eyeTargetY - cur.y) * 0.05;
+      cur.z = 1.0;
+    }
+
+    // Idle sway
+    if (idleSwayEnabled) {
+      const swayX = Math.sin(elapsed * 0.7) * idleSwayStrength;
+      const swayY = Math.sin(elapsed * 1.1) * idleSwayStrength * 0.7;
+      camera.position.x += swayX;
+      camera.position.y += swayY;
+    }
+
+    // Mood expressions
+    if (moodExpressionsEnabled && moodWeight > 0.01) {
+      if (vrm.blendShapeProxy) {
+        vrm.blendShapeProxy.setValue(lastMood, moodWeight);
+      }
+      moodWeight *= 0.995;
+    }
+
+    vrm.update(delta);
+    if (currentMixer) currentMixer.update(delta);
+  }
+
+  renderer.render(scene, camera);
+}
+
+// --- VRMA Functions ---
+function loadVRMA(index) {
+  if (!vrm || index < 0 || index >= VRMA_FILES.length) return Promise.resolve();
+  currentVrmaIndex = index;
+  stopVRMA();
+  const url = VRMA_FILES[index].file;
+  return new Promise((resolve, reject) => {
+    const l = createVrmLoader();
+    l.load(
+      url,
+      (gltf) => {
+        const animData = gltf.userData.vrmAnimations && gltf.userData.vrmAnimations[0];
+        if (animData) {
+          const clip = createVRMAnimationClip(animData, vrm);
+          if (clip) {
+            vrmaAnimationClip = clip;
+            resolve(clip);
+            return;
+          }
+        }
+        reject(new Error('No VRMA data in file'));
+      },
+      undefined,
+      reject
+    );
+  });
+}
+
+function playVRMA() {
+  if (!vrm || !vrmaAnimationClip) return;
+  if (!currentMixer) currentMixer = new THREE.AnimationMixer(vrm.scene);
+  if (currentAction) currentAction.stop();
+  currentAction = currentMixer.clipAction(vrmaAnimationClip);
+  currentAction.setLoop(THREE.LoopOnce);
+  currentAction.clampWhenFinished = true;
+  currentAction.reset();
+  currentAction.play();
+}
+
+function stopVRMA() {
+  if (currentAction) { currentAction.stop(); currentAction = null; }
+  if (currentMixer) currentMixer.stopAllAction();
+  if (vrm && vrm.humanoid) vrm.humanoid.resetPose();
+  vrmaAnimationClip = null;
+  currentVrmaIndex = -1;
+}
+
+async function loadAndPlayVRMA(index) {
+  if (index < 0 || index >= VRMA_FILES.length) { stopVRMA(); return; }
+  await loadVRMA(index);
+  playVRMA();
+}
+
+// WebSocket bridge for live control
+let ws = null;
+
+// --- Init ---
+initScene();
+animate();
+connectWS();
+// Don't load any VRM — wait for GUI to tell us what to load via WebSocket
+loadingEl.style.display = 'block';
+loadingEl.textContent = 'WAITING FOR GUI...';
+loadingEl.style.color = 'rgba(255,255,255,0.3)';
+
+window.addEventListener('resize', () => {
+  const w = Math.max(window.innerWidth, 1);
+  const h = Math.max(window.innerHeight, 1);
+  renderer.setSize(w, h);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+});
+
+function connectWS() {
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  ws = new WebSocket(proto + '//' + location.host + '/ws');
+  ws.onmessage = (e) => {
+    try {
+      const msg = JSON.parse(e.data);
+
+      if (msg.type === 'avatar_speaking') isSpeaking = msg.value;
+      if (msg.type === 'avatar_amplitude') audioAmplitude = msg.value;
+
+      if (msg.type === 'avatar_mood') {
+        if (msg.value && msg.value !== lastMood) {
+          lastMood = msg.value;
+          moodWeight = 0.8;
+        }
+      }
+
+      if (msg.type === 'vtuber_model') {
+        const idx = parseInt(msg.index, 10);
+        if (!isNaN(idx) && idx >= 0 && idx < MODELS.length) {
+          currentModelIdx = idx;
+          localStorage.setItem('vtuber-model-idx', currentModelIdx);
+          loadVRM(currentModelIdx);
+        }
+      }
+
+      if (msg.type === 'avatar_freeze') {
+        frozen = !!msg.value;
+      }
+
+      if (msg.type === 'avatar_reset_camera') {
+        camera.position.set(vrmCenter.x, vrmCenter.y + 0.2, vrmCenter.z + 2.8);
+        controls.target.copy(vrmCenter);
+        controls.update();
+      }
+
+      if (msg.type === 'avatar_config') {
+        const ac = msg.config;
+        if (ac.lip_sync !== undefined) lipSyncMode = ac.lip_sync;
+        if (ac.blink_interval !== undefined) blinkIntervalSetting = ac.blink_interval;
+        if (ac.eye_range !== undefined) eyeRange = ac.eye_range;
+        if (ac.idle_sway !== undefined) idleSwayEnabled = ac.idle_sway;
+        if (ac.sway_strength !== undefined) idleSwayStrength = ac.sway_strength;
+        if (ac.mood_expressions !== undefined) moodExpressionsEnabled = ac.mood_expressions;
+        if (ac.eye_tracking !== undefined) eyeTrackingEnabled = ac.eye_tracking;
+        if (ac.eye_interval !== undefined) eyeTrackingInterval = ac.eye_interval;
+      }
+
+      if (msg.type === 'avatar_vrma_load') loadVRMA(msg.index);
+      if (msg.type === 'avatar_vrma_play') playVRMA();
+      if (msg.type === 'avatar_vrma_stop') stopVRMA();
+      if (msg.type === 'avatar_vrma_mood') loadAndPlayVRMA(msg.index);
+    } catch(_) {}
+  };
+  ws.onclose = () => setTimeout(connectWS, 3000);
+}
+</script>
+</body>
+</html>

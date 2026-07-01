@@ -1,0 +1,24 @@
+{
+  "game": {
+    "name": "Shantae",
+    "adapter": "vba",
+    "rom_path": "./roms/Shantae (USA).zip",
+    "observe_every_n_frames": 30
+  },
+  "agent": {
+    "model": "gemma-3-27b-it",
+    "provider": "openrouter",
+    "base_url": "http://localhost:5001/v1",
+    "temperature": 0.8,
+    "strategy": "aggressive",
+    "max_history": 40
+  },
+  "commentary": {
+    "personality": "gamer",
+    "tts_enabled": true
+  },
+  "streaming": {
+    "overlay_enabled": true,
+    "overlay_port": 8765
+  }
+}

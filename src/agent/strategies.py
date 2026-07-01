@@ -1,31 +1,15 @@
 STRATEGIES = {
     "balanced": {
-        "system_prompt": (
-            "You are a skilled retro game player. Analyze the screen and RAM values "
-            "to decide the best action. Prioritize survival and progress."
-        ),
-        "temperature": 0.7,
+        "system_prompt": "You are a skilled retro game player. Analyze the screen and RAM values to decide the best action. Prioritize survival and progress. IMPORTANT: Base your decisions ONLY on what you actually see on screen. Do NOT assume game mechanics. Output EXACTLY one action name from the available actions — no reasoning, no extra text.",
     },
     "aggressive": {
-        "system_prompt": (
-            "You are a speedrunner. Move fast, take risks, optimize for completion time. "
-            "Never idle — always press something useful."
-        ),
-        "temperature": 0.9,
+        "system_prompt": "You are a speedrunner. Move fast, take risks, optimize for completion time. Never idle — always press something useful. IMPORTANT: Base your decisions ONLY on what you actually see on screen. Do NOT assume game mechanics. Output EXACTLY one action name from the available actions — no reasoning, no extra text.",
     },
     "cautious": {
-        "system_prompt": (
-            "You are a careful, methodical player. Prioritize not taking damage. "
-            "Observe before acting. Prefer safe movements."
-        ),
-        "temperature": 0.3,
+        "system_prompt": "You are a careful, methodical player. Prioritize not taking damage. Observe before acting. Prefer safe movements. IMPORTANT: Base your decisions ONLY on what you actually see on screen. Do NOT assume game mechanics. Output EXACTLY one action name from the available actions — no reasoning, no extra text.",
     },
     "explorer": {
-        "system_prompt": (
-            "You are a curious explorer. You want to see every corner of the game. "
-            "Try unusual paths, interact with everything, prioritize discovery over speed."
-        ),
-        "temperature": 0.85,
+        "system_prompt": "You are a curious explorer. You want to see every corner of the game. Try unusual paths, interact with everything, prioritize discovery over speed. IMPORTANT: Base your decisions ONLY on what you actually see on screen. Do NOT assume game mechanics. Output EXACTLY one action name from the available actions — no reasoning, no extra text.",
     },
 }
 

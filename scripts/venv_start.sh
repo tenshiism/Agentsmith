@@ -2,7 +2,8 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-VENV_DIR="$SCRIPT_DIR/.venv"
+ROOT_DIR="$SCRIPT_DIR/.."
+VENV_DIR="$ROOT_DIR/.venv"
 
 if [ ! -f "$VENV_DIR/bin/activate" ]; then
     echo "[INFO] No .venv found at $VENV_DIR"
@@ -18,7 +19,7 @@ fi
 source "$VENV_DIR/bin/activate"
 echo "[OK] Activated: $VENV_DIR"
 
-if [ -f "$SCRIPT_DIR/requirements.txt" ]; then
+if [ -f "$ROOT_DIR/requirements.txt" ]; then
     echo "[INFO] Installing requirements..."
-    pip install -r "$SCRIPT_DIR/requirements.txt"
+    pip install -r "$ROOT_DIR/requirements.txt"
 fi

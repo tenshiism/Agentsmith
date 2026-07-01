@@ -14,5 +14,5 @@ class TestPersonalities:
             assert len(p["catchphrases"]) > 0, f"{name} has no catchphrases"
 
     def test_known_personalities(self):
-        expected = {"energetic", "chill", "sarcastic", "lore_keeper"}
+        expected = {"energetic", "chill", "sarcastic", "lore_keeper", "neuro"}
         assert set(PERSONALITIES.keys()) == expected
